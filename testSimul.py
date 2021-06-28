@@ -27,7 +27,24 @@ exporters = None
 
 
 def trade(importer, exporter, price):
-    # Random chance for
+    importedAmount = importer.imported
+    exportedAmount = exporter.exported
+    print("trade occurring between " + importer.name + " and " + exporter.name)
+    if importedAmount >= exportedAmount:
+        # If importing larger than exporting (or the same) then the difference is made from retail market (0 when same)
+        print("Importing " + str(exportedAmount) + " for " + str(price))
+        exported_price = exportedAmount * price
+        importer.bill += exported_price + (importedAmount - exportedAmount) * retailPrice
+        exporter.bill -= exported_price
+    else:
+        # If exporting is larger than importing then difference is sold at fit
+        print("Exporting " + str(importedAmount) + " for " + str(price))
+        importedPrice = importedAmount * price
+        importer.bill += importedPrice
+        exporter.bill -= importedPrice + (exportedAmount - importedAmount) * feedInTariff
+    # reset trade partners
+    importer.tradePartner = None
+    exporter.tradePartner = None
 
 
 for currentTradingPeriod in range(4):
@@ -52,11 +69,23 @@ for currentTradingPeriod in range(4):
                         tradingUser.tradePartner = currentUser
                         currentUser.tradePartner = tradingUser
                         trade(currentUser, tradingUser, random.randint(feedInTariff + 1, retailPrice - 1))
+                        importers.remove(currentUser)
+                        exporters.remove(tradingUser)
+                        break
             else:
                 for tradingUser in importers:
                     if tradingUser.tradePartner is None:
                         tradingUser.tradePartner = currentUser
                         currentUser.tradePartner = tradingUser
                         trade(tradingUser, currentUser, random.randint(feedInTariff + 1, retailPrice - 1))
-                
+                        importers.remove(tradingUser)
+                        exporters.remove(currentUser)
+                        break
+    for currentUser in importers:
+        currentUser.bill += currentUser.imported * retailPrice
+    for currentUser in exporters:
+        currentUser.bill -= currentUser.exported * feedInTariff
 
+    #for testing only
+    for currentUser in users:
+        print("name: " + currentUser.name + " imported: " + str(currentUser.imported) + " exported: " + str(currentUser.exported) + " current bill: " + str(currentUser.bill))

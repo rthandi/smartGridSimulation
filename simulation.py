@@ -81,6 +81,7 @@ for currentTradingPeriod in range(4):
                         importers.remove(tradingUser)
                         exporters.remove(currentUser)
                         break
+    # For any user that did not trade with another use normal retail price or fit
     for currentUser in importers:
         currentUser.bill += currentUser.imported * retailPrice
     for currentUser in exporters:

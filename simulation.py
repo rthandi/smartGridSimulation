@@ -3,7 +3,7 @@ import random
 #constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
-TRADING_PERIODS = 4
+TRADING_PERIODS = 50
 
 
 class User:
@@ -33,12 +33,15 @@ def trade(importer, exporter, price):
     ADJUST_AMOUNT = 1
     imported_amount = importer.imported
     exported_amount = exporter.exported
+    print("trade occurring between " + importer.name + " and " + exporter.name)
     if imported_amount > exported_amount:
         diff = imported_amount - exported_amount
+        print(importer.name + " buying " + str(diff) + " for retail price " + str(RETAIL_PRICE))
         trade_amount = exported_amount
         importer.bill += diff * RETAIL_PRICE
     else:
         diff = exported_amount - imported_amount
+        print(exporter.name + " selling " + str(diff) + " for feed in tariff " + str(FEED_IN_TARIFF))
         exporter.bill -= diff * FEED_IN_TARIFF
         trade_amount = imported_amount
     # trade is now committed to but there is a chance for either user to export/import more or less than they committed to
@@ -47,12 +50,15 @@ def trade(importer, exporter, price):
     rand_num = random.randint(1, 4)
     if rand_num == 1:
         # case where importer uses less than they committed to in the trade - they sell for fit
+        print(importer.name + " used less than they bought. Selling excess for feed in")
         importer.bill -= ADJUST_AMOUNT * FEED_IN_TARIFF
     elif rand_num == 2:
         # case where exporter exports less than they committed to in the trade - they but for retail
+        print(exporter.name + " exported less than they sold. Buying difference for retail")
         exporter.bill += ADJUST_AMOUNT * RETAIL_PRICE
     # Execute the trade
     trade_cost = price * trade_amount
+    print(importer.name + " and " + exporter.name + " trading cost: " + str(trade_cost))
     importer.bill += trade_cost
     exporter.bill -= trade_cost
     # reset trade partners

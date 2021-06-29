@@ -1,7 +1,9 @@
 import random
 
-retailPrice = 10
-feedInTariff = 2
+#constants
+RETAIL_PRICE = 10
+FEED_IN_TARIFF = 2
+TRADING_PERIODS = 4
 
 
 class User:
@@ -27,27 +29,38 @@ exporters = None
 
 
 def trade(importer, exporter, price):
-    importedAmount = importer.imported
-    exportedAmount = exporter.exported
-    print("trade occurring between " + importer.name + " and " + exporter.name)
-    if importedAmount >= exportedAmount:
-        # If importing larger than exporting (or the same) then the difference is made from retail market (0 when same)
-        print("Importing " + str(exportedAmount) + " for " + str(price))
-        exported_price = exportedAmount * price
-        importer.bill += exported_price + (importedAmount - exportedAmount) * retailPrice
-        exporter.bill -= exported_price
+    # const for amount to adjust prices for. Should be random but easier to test like this for now
+    ADJUST_AMOUNT = 1
+    imported_amount = importer.imported
+    exported_amount = exporter.exported
+    if imported_amount > exported_amount:
+        diff = imported_amount - exported_amount
+        trade_amount = exported_amount
+        importer.bill += diff * RETAIL_PRICE
     else:
-        # If exporting is larger than importing then difference is sold at fit
-        print("Exporting " + str(importedAmount) + " for " + str(price))
-        importedPrice = importedAmount * price
-        importer.bill += importedPrice
-        exporter.bill -= importedPrice + (exportedAmount - importedAmount) * feedInTariff
+        diff = exported_amount - imported_amount
+        exporter.bill -= diff * FEED_IN_TARIFF
+        trade_amount = imported_amount
+    # trade is now committed to but there is a chance for either user to export/import more or less than they committed to
+    # the case that exporter exports extra is just feed in tariff so we can assume that is covered above
+    # same for the case where importer uses more - they just buy on retail
+    rand_num = random.randint(1, 4)
+    if rand_num == 1:
+        # case where importer uses less than they committed to in the trade - they sell for fit
+        importer.bill -= ADJUST_AMOUNT * FEED_IN_TARIFF
+    elif rand_num == 2:
+        # case where exporter exports less than they committed to in the trade - they but for retail
+        exporter.bill += ADJUST_AMOUNT * RETAIL_PRICE
+    # Execute the trade
+    trade_cost = price * trade_amount
+    importer.bill += trade_cost
+    exporter.bill -= trade_cost
     # reset trade partners
     importer.tradePartner = None
     exporter.tradePartner = None
 
 
-for currentTradingPeriod in range(4):
+for currentTradingPeriod in range(TRADING_PERIODS):
     importers = []
     exporters = []
     for currentUser in users:
@@ -68,7 +81,7 @@ for currentTradingPeriod in range(4):
                     if tradingUser.tradePartner is None:
                         tradingUser.tradePartner = currentUser
                         currentUser.tradePartner = tradingUser
-                        trade(currentUser, tradingUser, random.randint(feedInTariff + 1, retailPrice - 1))
+                        trade(currentUser, tradingUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
                         importers.remove(currentUser)
                         exporters.remove(tradingUser)
                         break
@@ -77,15 +90,15 @@ for currentTradingPeriod in range(4):
                     if tradingUser.tradePartner is None:
                         tradingUser.tradePartner = currentUser
                         currentUser.tradePartner = tradingUser
-                        trade(tradingUser, currentUser, random.randint(feedInTariff + 1, retailPrice - 1))
+                        trade(tradingUser, currentUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
                         importers.remove(tradingUser)
                         exporters.remove(currentUser)
                         break
     # For any user that did not trade with another use normal retail price or fit
     for currentUser in importers:
-        currentUser.bill += currentUser.imported * retailPrice
+        currentUser.bill += currentUser.imported * RETAIL_PRICE
     for currentUser in exporters:
-        currentUser.bill -= currentUser.exported * feedInTariff
+        currentUser.bill -= currentUser.exported * FEED_IN_TARIFF
 
     #for testing only
     for currentUser in users:

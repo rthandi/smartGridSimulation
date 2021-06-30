@@ -1,9 +1,9 @@
 import random
 
-#constants
+# constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
-TRADING_PERIODS = 50
+TRADING_PERIODS = 4
 
 
 class User:

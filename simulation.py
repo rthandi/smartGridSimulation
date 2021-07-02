@@ -65,47 +65,54 @@ def trade(importer, exporter, price):
     importer.tradePartner = None
     exporter.tradePartner = None
 
-
-for currentTradingPeriod in range(TRADING_PERIODS):
-    importers = []
-    exporters = []
-    for currentUser in users:
-        # choose whether importer or exporter
-        # More realistic to not be 50/50 but this can be changed later
-        if random.randint(1, 2) == 1:
-            currentUser.imported = random.randint(2, 100)
-            importers.append(currentUser)
-        else:
-            # Probably more realistic to expect exports are lower than imports but will leave it like this for now
-            currentUser.exported = random.randint(2, 100)
-            exporters.append(currentUser)
-        # Select if trader  (1 in 3 chance for now)
-        if random.randint(1, 3) == 1:
-            #If an imported find an exporter and vice versa
-            if currentUser in importers:
-                for tradingUser in exporters:
-                    if tradingUser.tradePartner is None:
-                        tradingUser.tradePartner = currentUser
-                        currentUser.tradePartner = tradingUser
-                        trade(currentUser, tradingUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
-                        importers.remove(currentUser)
-                        exporters.remove(tradingUser)
-                        break
+def simulate(tradingPeriods):
+    for i in range(20):
+        print(random.randint(1,5))
+    for currentTradingPeriod in range(tradingPeriods):
+        importers = []
+        exporters = []
+        for currentUser in users:
+            # choose whether importer or exporter
+            # More realistic to not be 50/50 but this can be changed later
+            if random.randint(1, 2) == 1:
+                currentUser.imported = random.randint(2, 100)
+                importers.append(currentUser)
             else:
-                for tradingUser in importers:
-                    if tradingUser.tradePartner is None:
-                        tradingUser.tradePartner = currentUser
-                        currentUser.tradePartner = tradingUser
-                        trade(tradingUser, currentUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
-                        importers.remove(tradingUser)
-                        exporters.remove(currentUser)
-                        break
-    # For any user that did not trade with another use normal retail price or fit
-    for currentUser in importers:
-        currentUser.bill += currentUser.imported * RETAIL_PRICE
-    for currentUser in exporters:
-        currentUser.bill -= currentUser.exported * FEED_IN_TARIFF
+                # Probably more realistic to expect exports are lower than imports but will leave it like this for now
+                currentUser.exported = random.randint(2, 100)
+                exporters.append(currentUser)
+            # Select if trader  (1 in 3 chance for now)
+            if random.randint(1, 3) == 1:
+                #If an imported find an exporter and vice versa
+                if currentUser in importers:
+                    for tradingUser in exporters:
+                        if tradingUser.tradePartner is None:
+                            tradingUser.tradePartner = currentUser
+                            currentUser.tradePartner = tradingUser
+                            trade(currentUser, tradingUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
+                            importers.remove(currentUser)
+                            exporters.remove(tradingUser)
+                            break
+                else:
+                    for tradingUser in importers:
+                        if tradingUser.tradePartner is None:
+                            tradingUser.tradePartner = currentUser
+                            currentUser.tradePartner = tradingUser
+                            trade(tradingUser, currentUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
+                            importers.remove(tradingUser)
+                            exporters.remove(currentUser)
+                            break
+        # For any user that did not trade with another use normal retail price or fit
+        for currentUser in importers:
+            currentUser.bill += currentUser.imported * RETAIL_PRICE
+        for currentUser in exporters:
+            currentUser.bill -= currentUser.exported * FEED_IN_TARIFF
+    
+        #for testing only
+        for currentUser in users:
+            print("name: " + currentUser.name + " imported: " + str(currentUser.imported) + " exported: " + str(currentUser.exported) + " current bill: " + str(currentUser.bill))
 
-    #for testing only
-    for currentUser in users:
-        print("name: " + currentUser.name + " imported: " + str(currentUser.imported) + " exported: " + str(currentUser.exported) + " current bill: " + str(currentUser.bill))
+        return users
+
+
+simulate(TRADING_PERIODS)

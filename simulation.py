@@ -1,4 +1,5 @@
 import random
+from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 
 # constants
 RETAIL_PRICE = 10
@@ -67,7 +68,7 @@ def trade(importer, exporter, price):
 
 def simulate(tradingPeriods):
     for i in range(20):
-        print(random.randint(1,5))
+        print(random.randint(1, 5))
     for currentTradingPeriod in range(tradingPeriods):
         importers = []
         exporters = []

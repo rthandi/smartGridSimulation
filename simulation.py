@@ -17,6 +17,8 @@ class User:
         self.exported = 0
         self.bill = 0
         self.tradePartner = None
+        self.tradeBool = False
+        self.bid = 0
 
 
 alice = User("Alice")
@@ -30,6 +32,34 @@ gary = User("Gary")
 users = [alice, bob, charlie, dean, erin, fred, gary]
 importers = None
 exporters = None
+
+def doubleAuction(importers, exporters):
+    sellList = []
+    buyList = []
+    flag = None
+
+    for importer in importers:
+        flag = False
+        for listing in sellList:
+            if listing['price'] == importer.bid:
+                listing['amount'] += importer.imported
+                flag = True
+        if not flag:
+            sellList.append({'amount': importer.imported, 'price': importer.bid})
+
+    for exporter in exporters:
+        flag = False
+        for listing in buyList:
+            if listing['price'] == exporter.bid:
+                listing['amount'] += exporter.exported
+                flag = True
+        if not flag:
+            sellList.append({'amount': exporter.imported, 'price': exporter.bid})
+
+    sellList.sort(key=lambda item: item['price'])
+    buyList.sort(key=lambda item: item['price'], reverse=True)
+
+
 
 
 def trade(importer, exporter, price):
@@ -87,6 +117,7 @@ def simulate(tradingPeriods):
                 exporters.append(currentUser)
             # Select if trader  (1 in 3 chance for now)
             if random.randint(1, 3) == 1:
+                currentUser.tradeBool = True
                 #If an imported find an exporter and vice versa
                 if currentUser in importers:
                     for tradingUser in exporters:

@@ -1,5 +1,8 @@
 import random
+import numpy as np
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
+import matplotlib.pyplot as plt
+from shapely.geometry import LineString
 
 # constants
 RETAIL_PRICE = 10
@@ -7,38 +10,47 @@ FEED_IN_TARIFF = 2
 TRADING_PERIODS = 5
 
 
-#Notes: Make it easy to compare to using the normal markets
-#Look at homomorphic encrypt libs
+# Notes: Make it easy to compare to using the normal markets
+# Look at homomorphic encrypt libs
 
 class User:
     def __init__(self, name):
         self.name = name
         self.imported = 0
         self.exported = 0
+        self.realTradeAmount = 0
         self.bill = 0
-        self.tradePartner = None
-        self.tradeBool = False
         self.bid = 0
 
 
-alice = User("Alice")
-bob = User("Bob")
-charlie = User("Charlie")
-dean = User("Dean")
-erin = User("Erin")
-fred = User("Fred")
-gary = User("Gary")
+def doubleAuction(auctionImporters, auctionExporters):
+    # %%% UNCOMMENT THE BLOCK BELOW FOR EASY DEBUGGING OF THIS METHOD %%%
+    """"
+    alice.bid = 5
+    alice.exported = 20
+    alice.imported = 15
+    bob.bid = 15
+    bob.exported = 10
+    bob.imported = 27
+    charlie.bid = 10
+    charlie.exported = 25
+    charlie.imported = 35
+    dean.bid = 20
+    dean.exported = 20
+    dean.imported = 20
+    erin.bid = 10
+    erin.exported = 20
+    erin.imported = 25
 
-users = [alice, bob, charlie, dean, erin, fred, gary]
-importers = None
-exporters = None
+    auctionImporters = [alice, bob, charlie, dean, erin]
+    auctionExporters = [alice, bob, charlie, dean, erin]
+    """
 
-def doubleAuction(importers, exporters):
     sellList = []
     buyList = []
     flag = None
 
-    for importer in importers:
+    for importer in auctionImporters:
         flag = False
         for listing in sellList:
             if listing['price'] == importer.bid:
@@ -47,107 +59,135 @@ def doubleAuction(importers, exporters):
         if not flag:
             sellList.append({'amount': importer.imported, 'price': importer.bid})
 
-    for exporter in exporters:
+    for exporter in auctionExporters:
         flag = False
         for listing in buyList:
             if listing['price'] == exporter.bid:
                 listing['amount'] += exporter.exported
                 flag = True
         if not flag:
-            sellList.append({'amount': exporter.imported, 'price': exporter.bid})
+            buyList.append({'amount': exporter.exported, 'price': exporter.bid})
 
     sellList.sort(key=lambda item: item['price'])
     buyList.sort(key=lambda item: item['price'], reverse=True)
 
+    cumBuy = np.cumsum(list(d['amount'] for d in buyList))
+    cumSell = np.cumsum(list(d['amount'] for d in sellList))
+    sellPriceColumn = list(d['price'] for d in sellList)
+    buyPriceColumn = list(d['price'] for d in buyList)
 
+    # plt.step(cumBuy, buyPriceColumn)
+    # plt.step(cumSell, sellPriceColumn)
 
+    plt.plot(cumBuy, buyPriceColumn)
+    plt.plot(cumSell, sellPriceColumn)
 
-def trade(importer, exporter, price):
-    # const for amount to adjust prices for. Should be random but easier to test like this for now
-    ADJUST_AMOUNT = 1
-    imported_amount = importer.imported
-    exported_amount = exporter.exported
-    print("trade occurring between " + importer.name + " and " + exporter.name)
-    if imported_amount > exported_amount:
-        diff = imported_amount - exported_amount
-        print(importer.name + " buying " + str(diff) + " for retail price " + str(RETAIL_PRICE))
-        trade_amount = exported_amount
-        importer.bill += diff * RETAIL_PRICE
+    # From: https://www.youtube.com/watch?v=heGBqav2TbU
+    line_1 = LineString(np.column_stack((cumBuy, buyPriceColumn)))
+    line_2 = LineString(np.column_stack((cumSell, sellPriceColumn)))
+    intersection = line_1.intersection(line_2)
+    if (intersection):
+        plt.plot(*intersection.xy, 'ro')
+        plt.show()
+        return intersection.y
     else:
-        diff = exported_amount - imported_amount
-        print(exporter.name + " selling " + str(diff) + " for feed in tariff " + str(FEED_IN_TARIFF))
-        exporter.bill -= diff * FEED_IN_TARIFF
-        trade_amount = imported_amount
-    # trade is now committed to but there is a chance for either user to export/import more or less than they committed to
-    # the case that exporter exports extra is just feed in tariff so we can assume that is covered above
-    # same for the case where importer uses more - they just buy on retail
-    rand_num = random.randint(1, 4)
-    if rand_num == 1:
-        # case where importer uses less than they committed to in the trade - they sell for fit
-        print(importer.name + " used less than they bought. Selling excess for feed in")
-        importer.bill -= ADJUST_AMOUNT * FEED_IN_TARIFF
-    elif rand_num == 2:
-        # case where exporter exports less than they committed to in the trade - they but for retail
-        print(exporter.name + " exported less than they sold. Buying difference for retail")
-        exporter.bill += ADJUST_AMOUNT * RETAIL_PRICE
-    # Execute the trade
-    trade_cost = price * trade_amount
-    print(importer.name + " and " + exporter.name + " trading cost: " + str(trade_cost))
-    importer.bill += trade_cost
-    exporter.bill -= trade_cost
-    # reset trade partners
-    importer.tradePartner = None
-    exporter.tradePartner = None
+        return None
 
-def simulate(tradingPeriods):
-    for i in range(20):
-        print(random.randint(1, 5))
-    for currentTradingPeriod in range(tradingPeriods):
-        importers = []
-        exporters = []
-        for currentUser in users:
-            # choose whether importer or exporter
-            # More realistic to not be 50/50 but this can be changed later
-            if random.randint(1, 2) == 1:
-                currentUser.imported = random.randint(2, 100)
-                importers.append(currentUser)
+
+def auction_winners(users_arg, importers_arg, exporters_arg):
+    # calculate the trading price using bids
+    trading_price = doubleAuction(importers_arg, exporters_arg)
+    traders = set()
+    if trading_price:
+        trading_price = round(trading_price, 2)
+        print("Trading price for this trading period is: " + str(trading_price))
+        for current_user in users_arg:
+            # for each user we see if their bid is in the correct range to trade
+            if (current_user in importers_arg and current_user.bid >= trading_price
+                    or current_user in exporters_arg and current_user.bid >= trading_price):
+                traders.add(current_user)
+    else:
+        print("No intersection of supply demand curves - no trading will occur this period")
+
+    non_traders = users_arg - traders
+
+    return traders, non_traders, trading_price
+
+
+def execute_trades(traders, non_traders, importers_arg, trading_price):
+    for nonTrader in non_traders:
+        if nonTrader in importers_arg:
+            nonTrader.bill += nonTrader.imported * RETAIL_PRICE
+        else:
+            nonTrader.bill -= nonTrader.exported * FEED_IN_TARIFF
+
+    for export_trader in (traders - importers_arg):
+        real_amount = export_trader.realTradeAmount
+        committed_amount = export_trader.exported
+        if committed_amount >= real_amount:
+            # they sell the committed amount or more - excess sold for FIT
+            tariff = FEED_IN_TARIFF
+        else:
+            # they sell less than the committed amount - buy from retail
+            tariff = RETAIL_PRICE
+        export_trader.bill -= committed_amount * trading_price - (real_amount - committed_amount) * tariff
+
+    for import_trader in (traders.intersection(importers_arg)):
+        real_amount = import_trader.realTradeAmount
+        committed_amount = import_trader.exported
+        if committed_amount <= real_amount:
+            # they use the committed amount or more - extra purchased from retail
+            tariff = RETAIL_PRICE
+        else:
+            # they use less than the committed amount - excess sold for FIT
+            tariff = FEED_IN_TARIFF
+        import_trader.bill += committed_amount * trading_price + (real_amount - committed_amount) * tariff
+
+    return traders | non_traders
+
+
+def simulate(trading_periods):
+    alice = User("Alice")
+    bob = User("Bob")
+    charlie = User("Charlie")
+    dean = User("Dean")
+    erin = User("Erin")
+    fred = User("Fred")
+    gary = User("Gary")
+    harry = User("Harry")
+    imogen = User("Imogen")
+    john = User("John")
+
+    users = {alice, bob, charlie, dean, erin, fred, gary, harry, imogen, john}
+    importers = {alice, bob, charlie, dean, erin, fred}
+    exporters = {gary, harry, imogen, john}
+
+    for currentTradingPeriod in range(trading_periods):
+        # select a bid price and export/import amount for each user
+        for current_user in users:
+            current_user.bid = random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1)
+            if current_user in importers:
+                current_user.imported = random.randint(5, 50)
             else:
-                # Probably more realistic to expect exports are lower than imports but will leave it like this for now
-                currentUser.exported = random.randint(2, 100)
-                exporters.append(currentUser)
-            # Select if trader  (1 in 3 chance for now)
-            if random.randint(1, 3) == 1:
-                currentUser.tradeBool = True
-                #If an imported find an exporter and vice versa
-                if currentUser in importers:
-                    for tradingUser in exporters:
-                        if tradingUser.tradePartner is None:
-                            tradingUser.tradePartner = currentUser
-                            currentUser.tradePartner = tradingUser
-                            trade(currentUser, tradingUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
-                            importers.remove(currentUser)
-                            exporters.remove(tradingUser)
-                            break
-                else:
-                    for tradingUser in importers:
-                        if tradingUser.tradePartner is None:
-                            tradingUser.tradePartner = currentUser
-                            currentUser.tradePartner = tradingUser
-                            trade(tradingUser, currentUser, random.randint(FEED_IN_TARIFF + 1, RETAIL_PRICE - 1))
-                            importers.remove(tradingUser)
-                            exporters.remove(currentUser)
-                            break
-        # For any user that did not trade with another use normal retail price or fit
-        for currentUser in importers:
-            currentUser.bill += currentUser.imported * RETAIL_PRICE
-        for currentUser in exporters:
-            currentUser.bill -= currentUser.exported * FEED_IN_TARIFF
-    
-        #for testing only
-        for currentUser in users:
-            print("name: " + currentUser.name + " imported: " + str(currentUser.imported) + " exported: " + str(currentUser.exported) + " current bill: " + str(currentUser.bill))
+                current_user.exported = random.randint(5, 50)
 
-        return users
+        traders, non_traders, trading_price = auction_winners(users, importers, exporters)
+
+        for trader in traders:
+            # random chance for real amount traded to be different to amount committed to in bid
+            if random.randint(1, 4) == 1:
+                trader.realTradeAmount = random.randint(5, 50)
+            else:
+                trader.realTradeAmount = max(trader.exported, trader.imported)
+
+        users = execute_trades(traders, non_traders, importers, trading_price)
+
+        # for testing only
+        for current_user in users:
+            print("name: " + current_user.name + " imported: " + str(current_user.imported) + " exported: " +
+                  str(current_user.exported) + " current bill: " + str(current_user.bill))
+
+    return users
 
 
 simulate(TRADING_PERIODS)

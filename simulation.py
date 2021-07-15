@@ -91,22 +91,25 @@ def doubleAuction(auctionImporters, auctionExporters):
 
     x, y = intersect.intersection(cumBuy, buyPriceColumn, cumSell, sellPriceColumn)
 
-    print(x, y)
-
-    return y[0]
-
-
-    # From: https://www.youtube.com/watch?v=heGBqav2TbU
-    # TODO: This method gives the point nearest to an intersection I believe which is not accurate enough.
-    line_1 = LineString(np.column_stack((cumBuy, buyPriceColumn)))
-    line_2 = LineString(np.column_stack((cumSell, sellPriceColumn)))
-    intersection = line_1.intersection(line_2)
-    if intersection:
-        plt.plot(*intersection.xy, 'ro')
+    if y[0] and x[0]:
+        plt.plot(x[0], y[0], 'ro')
         plt.show()
-        return intersection.y
+        return y[0]
     else:
         return None
+
+
+    # # From: https://www.youtube.com/watch?v=heGBqav2TbU
+    # # TODO: This method gives the point nearest to an intersection I believe which is not accurate enough.
+    # line_1 = LineString(np.column_stack((cumBuy, buyPriceColumn)))
+    # line_2 = LineString(np.column_stack((cumSell, sellPriceColumn)))
+    # intersection = line_1.intersection(line_2)
+    # if intersection:
+    #     plt.plot(*intersection.xy, 'ro')
+    #     plt.show()
+    #     return intersection.y
+    # else:
+    #     return None
 
 
 def auction_winners(users_arg, importers_arg, exporters_arg):

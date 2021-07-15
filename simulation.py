@@ -1,9 +1,11 @@
+import math
 import random
 import numpy as np
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString
 import intersect
+from scipy.spatial.distance import cdist
 
 # constants
 RETAIL_PRICE = 10
@@ -56,46 +58,85 @@ def doubleAuction(auctionImporters, auctionExporters):
     sellList = []
     buyList = []
     flag = None
+    if len(auctionImporters) > 0 and len(auctionExporters) > 0:
+        for importer in auctionImporters:
+            flag = False
+            for listing in sellList:
+                if listing['price'] == importer.bid:
+                    listing['amount'] += importer.imported
+                    flag = True
+            if not flag:
+                sellList.append({'amount': importer.imported, 'price': importer.bid})
 
-    for importer in auctionImporters:
-        flag = False
-        for listing in sellList:
-            if listing['price'] == importer.bid:
-                listing['amount'] += importer.imported
-                flag = True
-        if not flag:
-            sellList.append({'amount': importer.imported, 'price': importer.bid})
+        for exporter in auctionExporters:
+            flag = False
+            for listing in buyList:
+                if listing['price'] == exporter.bid:
+                    listing['amount'] += exporter.exported
+                    flag = True
+            if not flag:
+                buyList.append({'amount': exporter.exported, 'price': exporter.bid})
 
-    for exporter in auctionExporters:
-        flag = False
-        for listing in buyList:
-            if listing['price'] == exporter.bid:
-                listing['amount'] += exporter.exported
-                flag = True
-        if not flag:
-            buyList.append({'amount': exporter.exported, 'price': exporter.bid})
+        sellList.sort(key=lambda item: item['price'])
+        buyList.sort(key=lambda item: item['price'], reverse=True)
 
-    sellList.sort(key=lambda item: item['price'])
-    buyList.sort(key=lambda item: item['price'], reverse=True)
+        while len(sellList) > len(buyList):
+            buyList.append({'amount': 0, 'price': 0})
+        while len(buyList) > len(sellList):
+            sellList.append({'amount': 0, 'price': 20})
 
-    cumBuy = np.array(np.cumsum(list(d['amount'] for d in buyList)))
-    cumSell = np.array(np.cumsum(list(d['amount'] for d in sellList)))
-    sellPriceColumn = np.array(list(d['price'] for d in sellList))
-    buyPriceColumn = np.array(list(d['price'] for d in buyList))
+        cumBuy = np.array(np.cumsum(list(d['amount'] for d in buyList)))
+        cumSell = np.array(np.cumsum(list(d['amount'] for d in sellList)))
+        sellPriceColumn = np.array(list(d['price'] for d in sellList))
+        buyPriceColumn = np.array(list(d['price'] for d in buyList))
 
-    # plt.step(cumBuy, buyPriceColumn)
-    # plt.step(cumSell, sellPriceColumn)
+        plt.step(cumBuy, buyPriceColumn)
+        plt.step(cumSell, sellPriceColumn)
 
-    plt.plot(cumBuy, buyPriceColumn)
-    plt.plot(cumSell, sellPriceColumn)
+        # test = np.min(cdist([cumBuy, buyPriceColumn], [cumSell, sellPriceColumn]))
+        # print("cdist " + str(test))
 
-    x, y = intersect.intersection(cumBuy, buyPriceColumn, cumSell, sellPriceColumn)
+        # buyArray = list(zip(cumBuy, buyPriceColumn))
+        # sellArray = list(zip(cumSell, sellPriceColumn))
 
-    if y[0] and x[0]:
-        plt.plot(x[0], y[0], 'ro')
-        plt.show()
-        return y[0]
+
+        # minBuy = None
+        # minSell = None
+        # minDist = 300000
+        # distTemp = None
+        # for buyPrice in buyPriceColumn:
+
+        # print(minDist, minBuy, minSell)
+
+
+    #     for buy in buyArray:
+    # for sell in sellArray:
+    #     distTemp = math.dist(buy, sell)
+    #     if distTemp < minDist:
+    #         minDist = distTemp
+    #         minBuy = buy
+    #         minSell = sell
+    # print(minDist, minBuy, minSell)
+
+        # res = (minSell[1] + minBuy[1])/2
+        # print(res)
+        # plt.plot(minBuy[0], minBuy[1], 'ro')
+        # plt.plot(minSell[0], minSell[1], 'yo')
+
+
+        # plt.plot(cumBuy, buyPriceColumn)
+        # plt.plot(cumSell, sellPriceColumn)
+
+        x, y = intersect.intersection(cumBuy, buyPriceColumn, cumSell, sellPriceColumn)
+
+        try:
+            plt.plot(x[0], y[0], 'ro')
+            plt.show()
+            return y[0]
+        except IndexError:
+            return None
     else:
+        print("Importers or exporters is empty")
         return None
 
 
@@ -117,29 +158,17 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     trading_price = doubleAuction(importers_arg, exporters_arg)
     traders = set()
     if trading_price:
-        trading_price = round(trading_price, 2)
+        trading_price = trading_price
         print("Trading price for this trading period is: " + str(trading_price))
         for current_user in users_arg:
             # for each user we see if their bid is in the correct range to trade
-            if (current_user in importers_arg and current_user.bid <= trading_price
-                    or current_user in exporters_arg and current_user.bid >= trading_price):
+            if (current_user in importers_arg and current_user.bid >= trading_price
+                    or current_user in exporters_arg and current_user.bid <= trading_price):
                 traders.add(current_user)
     else:
         print("No intersection of supply demand curves - no trading will occur this period")
 
     non_traders = users_arg - traders
-
-    countImport = 0
-    countExport = 0
-    for trader in traders:
-        if trader in exporters_arg:
-            countExport += 1
-        elif trader in importers_arg:
-            countImport += 1
-        else:
-            print("tasniojdasnjd")
-    print("imp" + str(countImport))
-    print("exp" + str(countExport))
 
     return traders, non_traders, trading_price
 
@@ -152,36 +181,34 @@ def execute_trades(traders, non_traders, importers_arg, trading_price):
             nonTrader.bill -= nonTrader.exported * FEED_IN_TARIFF
         nonTrader.reset()
 
-    volumeTradedExport = 0
-    volumeTradedImport = 0
+    volumeTraded = 0
     for export_trader in (traders - importers_arg):
         real_amount = export_trader.realTradeAmount
         committed_amount = export_trader.exported
-        volumeTradedExport += committed_amount
+        volumeTraded += committed_amount
         if committed_amount >= real_amount:
             # they sell the committed amount or more - excess sold for FIT
             tariff = FEED_IN_TARIFF
         else:
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
-        export_trader.bill -= committed_amount * trading_price - (real_amount - committed_amount) * tariff
+        export_trader.bill -= committed_amount * trading_price - ((real_amount - committed_amount) * tariff)
         export_trader.reset()
 
     for import_trader in (traders.intersection(importers_arg)):
         real_amount = import_trader.realTradeAmount
         committed_amount = import_trader.imported
-        volumeTradedImport += committed_amount
+        volumeTraded -= committed_amount
         if committed_amount <= real_amount:
             # they use the committed amount or more - extra purchased from retail
             tariff = RETAIL_PRICE
         else:
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
-        import_trader.bill += committed_amount * trading_price + (real_amount - committed_amount) * tariff
+        import_trader.bill += committed_amount * trading_price + ((real_amount - committed_amount) * tariff)
         import_trader.reset()
 
-    print("volume Traded export:         " + str(volumeTradedExport))
-    print("volume Traded import:         " + str(volumeTradedImport))
+    print("difference between amount exported and imported (this should be 0):  " + str(volumeTraded))
     return traders | non_traders
 
 
@@ -204,7 +231,7 @@ def simulate(trading_periods):
     users = set()
     importers = set()
     exporters = set()
-    for i in range(200):
+    for i in range(20):
         users.add(User(str(i)))
 
     for user in users:

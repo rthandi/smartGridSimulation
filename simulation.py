@@ -1,16 +1,14 @@
-import math
 import random
 import numpy as np
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 import matplotlib.pyplot as plt
-from shapely.geometry import LineString
 import intersect
-from scipy.spatial.distance import cdist
 
 # constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
 TRADING_PERIODS = 1
+USER_COUNT = 1000
 
 
 # Notes: Make it easy to compare to using the normal markets
@@ -80,54 +78,27 @@ def doubleAuction(auctionImporters, auctionExporters):
         sellList.sort(key=lambda item: item['price'])
         buyList.sort(key=lambda item: item['price'], reverse=True)
 
-        while len(sellList) > len(buyList):
-            buyList.append({'amount': 0, 'price': 0})
-        while len(buyList) > len(sellList):
-            sellList.append({'amount': 0, 'price': 20})
+        cumBuy = list(np.cumsum(list(d['amount'] for d in buyList)))
+        cumSell = list(np.cumsum(list(d['amount'] for d in sellList)))
+        sellPriceColumn = list(d['price'] for d in sellList)
+        buyPriceColumn = list(d['price'] for d in buyList)
 
-        cumBuy = np.array(np.cumsum(list(d['amount'] for d in buyList)))
-        cumSell = np.array(np.cumsum(list(d['amount'] for d in sellList)))
-        sellPriceColumn = np.array(list(d['price'] for d in sellList))
-        buyPriceColumn = np.array(list(d['price'] for d in buyList))
+        # this seems super inneficient but i've tried 100 other things and can't find a better way
+        # using the curve values will always give a different value so it needs to be stepped like this (I think)
+        for i in range(0, len(cumBuy) * 2 - 2, 2):
+            cumBuy.insert(i + 1, cumBuy[i])
+            buyPriceColumn.insert(i + 1, buyPriceColumn[i + 1])
 
-        plt.step(cumBuy, buyPriceColumn)
-        plt.step(cumSell, sellPriceColumn)
+        for i in range(0, len(cumSell) * 2 - 2, 2):
+            cumSell.insert(i + 1, cumSell[i])
+            sellPriceColumn.insert(i + 1, sellPriceColumn[i + 1])
 
-        # test = np.min(cdist([cumBuy, buyPriceColumn], [cumSell, sellPriceColumn]))
-        # print("cdist " + str(test))
-
-        # buyArray = list(zip(cumBuy, buyPriceColumn))
-        # sellArray = list(zip(cumSell, sellPriceColumn))
-
-
-        # minBuy = None
-        # minSell = None
-        # minDist = 300000
-        # distTemp = None
-        # for buyPrice in buyPriceColumn:
-
-        # print(minDist, minBuy, minSell)
-
-
-    #     for buy in buyArray:
-    # for sell in sellArray:
-    #     distTemp = math.dist(buy, sell)
-    #     if distTemp < minDist:
-    #         minDist = distTemp
-    #         minBuy = buy
-    #         minSell = sell
-    # print(minDist, minBuy, minSell)
-
-        # res = (minSell[1] + minBuy[1])/2
-        # print(res)
-        # plt.plot(minBuy[0], minBuy[1], 'ro')
-        # plt.plot(minSell[0], minSell[1], 'yo')
-
-
-        # plt.plot(cumBuy, buyPriceColumn)
-        # plt.plot(cumSell, sellPriceColumn)
+        plt.plot(cumBuy, buyPriceColumn)
+        plt.plot(cumSell, sellPriceColumn)
 
         x, y = intersect.intersection(cumBuy, buyPriceColumn, cumSell, sellPriceColumn)
+
+        # prices = np.arange(FEED_IN_TARIFF, RETAIL_PRICE, 0.01)
 
         try:
             plt.plot(x[0], y[0], 'ro')
@@ -138,20 +109,6 @@ def doubleAuction(auctionImporters, auctionExporters):
     else:
         print("Importers or exporters is empty")
         return None
-
-
-    # # From: https://www.youtube.com/watch?v=heGBqav2TbU
-    # # TODO: This method gives the point nearest to an intersection I believe which is not accurate enough.
-    # line_1 = LineString(np.column_stack((cumBuy, buyPriceColumn)))
-    # line_2 = LineString(np.column_stack((cumSell, sellPriceColumn)))
-    # intersection = line_1.intersection(line_2)
-    # if intersection:
-    #     plt.plot(*intersection.xy, 'ro')
-    #     plt.show()
-    #     return intersection.y
-    # else:
-    #     return None
-
 
 def auction_winners(users_arg, importers_arg, exporters_arg):
     # calculate the trading price using bids
@@ -231,7 +188,7 @@ def simulate(trading_periods):
     users = set()
     importers = set()
     exporters = set()
-    for i in range(20):
+    for i in range(USER_COUNT):
         users.add(User(str(i)))
 
     for user in users:

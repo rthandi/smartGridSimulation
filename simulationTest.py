@@ -9,6 +9,7 @@ class doubleAuctionTest(unittest.TestCase):
     charlie = simulation.User("Charlie")
     dean = simulation.User("Dean")
     erin = simulation.User("Erin")
+    fred = simulation.User("Fred")
 
     alice.bid = 5
     alice.exported = 20
@@ -25,6 +26,9 @@ class doubleAuctionTest(unittest.TestCase):
     erin.bid = 5
     erin.exported = 20
     erin.imported = 35
+    fred.bid = 2
+    fred.exported = 10
+    fred.imported = 50
 
     auction_importers = set()
     auction_exporters = set()
@@ -50,13 +54,20 @@ class doubleAuctionTest(unittest.TestCase):
         self.auction_importers = {self.charlie, self.dean}
         self.auction_exporters = {self.alice, self.bob}
         res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
-        self.assertEqual(res, 7.5)
+        self.assertEqual(res, 10)
 
     def testIntersectionUnevenImport(self):
         self.auction_importers = {self.charlie, self.erin}
         self.auction_exporters = {self.alice, self.bob}
         res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
         self.assertEqual(res, 5)
+
+    def testCurve(self):
+        self.auction_importers = {self.charlie, self.erin, self.fred}
+        self.auction_exporters = {self.alice, self.bob, self.dean}
+        res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
+        self.assertEqual(res, 5)
+
 
 
     # def testTradeRun(self):

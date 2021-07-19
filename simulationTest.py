@@ -86,34 +86,34 @@ class doubleAuctionTest(unittest.TestCase):
     #     self.assertEqual(price_charlie, users_copy.pop().imported * res_price)
     #     print(res_users.pop().name)
 
-    class auctionWinnersTest(unittest.TestCase):
+class auctionWinnersTest(unittest.TestCase):
 
-        alice = simulation.User("Alice")
-        bob = simulation.User("Bob")
-        charlie = simulation.User("Charlie")
-        dean = simulation.User("Dean")
-        erin = simulation.User("Erin")
-        fred = simulation.User("Fred")
+    alice = simulation.User("Alice")
+    bob = simulation.User("Bob")
+    charlie = simulation.User("Charlie")
+    dean = simulation.User("Dean")
+    erin = simulation.User("Erin")
+    fred = simulation.User("Fred")
 
-        alice.bid = 5
-        alice.exported = 20
-        alice.imported = 10
-        bob.bid = 10
-        bob.exported = 20
-        bob.imported = 20
-        charlie.bid = 10
-        charlie.exported = 20
-        charlie.imported = 20
-        dean.bid = 5
-        dean.exported = 20
-        dean.imported = 20
-        erin.bid = 5
-        erin.exported = 20
-        erin.imported = 35
-        fred.bid = 2
-        fred.exported = 10
-        fred.imported = 50
+    alice.bid = 5
+    alice.exported = 20
+    alice.imported = 10
+    bob.bid = 10
+    bob.exported = 20
+    bob.imported = 20
+    charlie.bid = 10
+    charlie.exported = 20
+    charlie.imported = 20
+    dean.bid = 5
+    dean.exported = 20
+    dean.imported = 20
+    erin.bid = 5
+    erin.exported = 20
+    erin.imported = 35
+    fred.bid = 2
+    fred.exported = 10
+    fred.imported = 50
 
-        auction_importers = set()
-        auction_exporters = set()
-        users = set()
+    auction_importers = set()
+    auction_exporters = set()
+    users = set()

@@ -33,6 +33,41 @@ class User:
         self.bid = 0
 
 
+class PlatformUser:
+    def __init__(self, name, bill, context, public_key):
+        self.name = name
+        self.bill = bill
+        self.context = context
+        self.public_key = public_key
+
+
+class TradingPlatform:
+    def __init__(self):
+        self.encryption = Pyfhel()
+        self.userDict = {}
+
+    def load_users(self, users):
+        for user in users:
+            self.userDict[user.name] = PlatformUser(user.name, 0, user.encryption.to_bytes_context(),
+                                                    user.encryption.to_bytes_publicKey())
+
+    def execute_trade(self, name, committed_amount, real_amount, trading_price, tariff, imported):
+        user = self.userDict[name]
+        self.encryption.from_bytes_context(user.context)
+        self.encryption.from_bytes_publicKey(user.public_key)
+        # bill calculations are in a very weird order so that they work for Pyfhel's methods as they take the + and *
+        # operators and call their own methods from those in which the first argument must be a Pyfhel object
+        if imported:
+            period_bill = (committed_amount * trading_price - ((real_amount - imported) * tariff))
+            user.bill += period_bill
+            return period_bill
+        else:
+            exported = self.encryption.negate(committed_amount)
+            period_bill = (exported * trading_price - ((real_amount - exported) * tariff))
+            user.bill -= period_bill
+            return period_bill
+
+
 def doubleAuction(auctionImporters, auctionExporters):
     # %%% UNCOMMENT THE BLOCK BELOW FOR EASY DEBUGGING OF THIS METHOD %%%
     """"
@@ -86,15 +121,15 @@ def doubleAuction(auctionImporters, auctionExporters):
         sellPriceColumn = list(d['price'] for d in sellList)
         buyPriceColumn = list(d['price'] for d in buyList)
 
-        # this seems super inneficient but i've tried 100 other things and can't find a better way
-        # using the curve values will always give a different value so it needs to be stepped like this (I think)
+        # Not certain this is the way to do this - it creates all of the points in a stepped graph rather than
+        # a smooth one which seems to
         for i in range(0, len(cumBuy) * 2 - 2, 2):
-            cumBuy.insert(i + 1, cumBuy[i])
-            buyPriceColumn.insert(i + 1, buyPriceColumn[i + 1])
+            cumBuy.insert(i + 1, cumBuy[i + 1])
+            buyPriceColumn.insert(i + 1, buyPriceColumn[i])
 
         for i in range(0, len(cumSell) * 2 - 2, 2):
-            cumSell.insert(i + 1, cumSell[i])
-            sellPriceColumn.insert(i + 1, sellPriceColumn[i + 1])
+            cumSell.insert(i + 1, cumSell[i + 1])
+            sellPriceColumn.insert(i + 1, sellPriceColumn[i])
 
         plt.plot(cumBuy, buyPriceColumn)
         plt.plot(cumSell, sellPriceColumn)
@@ -112,6 +147,7 @@ def doubleAuction(auctionImporters, auctionExporters):
     else:
         print("Importers or exporters is empty")
         return None
+
 
 def auction_winners(users_arg, importers_arg, exporters_arg):
     # calculate the trading price using bids
@@ -183,6 +219,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price):
     print("difference between amount exported and imported (this should be 0):  " + str(volumeTraded))
     return traders | non_traders
 
+
 def execute_trade(user, tariff, trading_price):
     # this simulates the calculations run on the trading platform
     real_amount = user.realTradeAmount
@@ -193,7 +230,8 @@ def execute_trade(user, tariff, trading_price):
         user.bill = (imported * trading_price - ((real_amount - imported) * tariff)) + user.bill
     else:
         exported = user.exported
-        user.bill = exported * trading_price - ((real_amount - exported) * tariff) + user.bill
+        user.bill = Pyfhel.negate(exported * trading_price - ((real_amount - exported) * tariff)) + user.bill
+
 
 def simulate(trading_periods):
     # alice = User("Alice")

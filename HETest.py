@@ -20,7 +20,7 @@ print("    int ",integer2,'-> ctxt2 ', type(ctxt2))
 print(ctxt1)
 print(ctxt2)
 
-ctxtSum = ctxt1 + ctxt2         # `ctxt1 += ctxt2` for quicker inplace operation
+ctxtSum = ctxt1 * 5         # `ctxt1 += ctxt2` for quicker inplace operation
 ctxtSub = ctxt1 - ctxt2         # `ctxt1 -= ctxt2` for quicker inplace operation
 ctxtMul = ctxt1 * ctxt2         # `ctxt1 *= ctxt2` for quicker inplace operation
 print("4. Operating with encrypted integers")

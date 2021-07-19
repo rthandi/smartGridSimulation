@@ -8,20 +8,23 @@ import intersect
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
 TRADING_PERIODS = 1
-USER_COUNT = 1000
+USER_COUNT = 20
 
 
 # Notes: Make it easy to compare to using the normal markets
 # Look at homomorphic encrypt libs
 
 class User:
-    def __init__(self, name = None):
+    def __init__(self, name=None):
         self.name = name
         self.imported = 0
         self.exported = 0
         self.realTradeAmount = 0
         self.bill = 0
         self.bid = 0
+        self.encryption = Pyfhel()
+        self.encryption.contextGen(p=65537)
+        self.encryption.keyGen()
 
     def reset(self):
         self.imported = 0
@@ -130,44 +133,56 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     return traders, non_traders, trading_price
 
 
-def execute_trades(traders, non_traders, importers_arg, trading_price):
-    for nonTrader in non_traders:
-        if nonTrader in importers_arg:
-            nonTrader.bill += nonTrader.imported * RETAIL_PRICE
+def set_up_trades(traders, non_traders, importers_arg, trading_price):
+    for non_trader in non_traders:
+        if non_trader in importers_arg:
+            # user's import amount is encrypted before being sent to the trading platform for execution
+            non_trader.imported = non_trader.encryption.encryptInt(non_trader.imported)
+            non_trader.bill += non_trader.imported * RETAIL_PRICE
         else:
-            nonTrader.bill -= nonTrader.exported * FEED_IN_TARIFF
-        nonTrader.reset()
+            non_trader.exported = non_trader.encryption.encryptInt(non_trader.exported)
+            non_trader.bill -= non_trader.exported * FEED_IN_TARIFF
+        non_trader.reset()
 
+    #TODO: These two blocks can be simplified to one method
     volumeTraded = 0
     for export_trader in (traders - importers_arg):
-        real_amount = export_trader.realTradeAmount
-        committed_amount = export_trader.exported
-        volumeTraded += committed_amount
-        if committed_amount >= real_amount:
+        volumeTraded += export_trader.exported
+        if export_trader.exported >= export_trader.realTradeAmount:
             # they sell the committed amount or more - excess sold for FIT
             tariff = FEED_IN_TARIFF
         else:
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
-        export_trader.bill -= committed_amount * trading_price - ((real_amount - committed_amount) * tariff)
+        # encrypt user's data before it is sent to trading platform to execute the trade
+        export_trader.exported = export_trader.encryption.encryptInt(export_trader.exported)
+        export_trader.realTradeAmount = export_trader.encryption.encryptInt(export_trader.realTradeAmount)
+        execute_trade(export_trader, tariff, trading_price)
         export_trader.reset()
 
     for import_trader in (traders.intersection(importers_arg)):
-        real_amount = import_trader.realTradeAmount
-        committed_amount = import_trader.imported
-        volumeTraded -= committed_amount
-        if committed_amount <= real_amount:
+        volumeTraded -= import_trader.imported
+        if import_trader.imported <= import_trader.realTradeAmount:
             # they use the committed amount or more - extra purchased from retail
             tariff = RETAIL_PRICE
         else:
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
-        import_trader.bill += committed_amount * trading_price + ((real_amount - committed_amount) * tariff)
+        # encrypt user's data before it is sent to trading platform to execute the trade
+        import_trader.imported = import_trader.encryption.encryptInt(import_trader.imported)
+        import_trader.realTradeAmount = import_trader.encryption.encryptInt(import_trader.realTradeAmount)
+        execute_trade(import_trader, tariff, trading_price)
         import_trader.reset()
 
     print("difference between amount exported and imported (this should be 0):  " + str(volumeTraded))
     return traders | non_traders
 
+def execute_trade(user, tariff, trading_price):
+    # this simulates the calculations run on the trading platform
+    real_amount = user.realTradeAmount
+    imported = user.imported
+    if user.imported:
+        user.bill -= imported * trading_price - ((real_amount - imported) * tariff)
 
 def simulate(trading_periods):
     # alice = User("Alice")
@@ -215,7 +230,7 @@ def simulate(trading_periods):
             else:
                 trader.realTradeAmount = max(trader.exported, trader.imported)
 
-        users = execute_trades(traders, non_traders, importers, trading_price)
+        users = set_up_trades(traders, non_traders, importers, trading_price)
 
         # for testing only
         # for current_user in users:

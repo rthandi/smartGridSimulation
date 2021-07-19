@@ -4,8 +4,8 @@ from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 import matplotlib.pyplot as plt
 import intersect
 
-import TradingPlatform
-import User
+from TradingPlatform import TradingPlatform
+from User import User
 
 # constants
 RETAIL_PRICE = 10
@@ -191,9 +191,9 @@ def simulate(trading_periods):
     importers = set()
     exporters = set()
     for i in range(USER_COUNT):
-        users.add(User.User(str(i)))
+        users.add(User(str(i)))
 
-    trading_platform = TradingPlatform.TradingPlatform()
+    trading_platform = TradingPlatform()
     trading_platform.load_users(users)
 
     for user in users:

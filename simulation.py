@@ -132,7 +132,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             non_trader.bill += trade_cost
         non_trader.reset()
 
-    # TODO: These two blocks can be simplified to one method
+    # TODO: These two for blocks can probably be simplified to one
     volume_traded = 0
     for import_trader in (traders.intersection(importers_arg)):
         volume_traded -= import_trader.imported

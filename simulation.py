@@ -14,11 +14,7 @@ TRADING_PERIODS = 1
 USER_COUNT = 20
 
 
-# Notes: Make it easy to compare to using the normal markets
-# Look at homomorphic encrypt libs
-
-
-def doubleAuction(auctionImporters, auctionExporters):
+def double_auction(auction_importers, auction_exporters):
     # %%% UNCOMMENT THE BLOCK BELOW FOR EASY DEBUGGING OF THIS METHOD %%%
     """"
     alice.bid = 5
@@ -41,52 +37,50 @@ def doubleAuction(auctionImporters, auctionExporters):
     auctionExporters = [alice, bob, charlie, dean, erin]
     """
 
-    sellList = []
-    buyList = []
+    sell_list = []
+    buy_list = []
     flag = None
-    if len(auctionImporters) > 0 and len(auctionExporters) > 0:
-        for importer in auctionImporters:
+    if len(auction_importers) > 0 and len(auction_exporters) > 0:
+        for importer in auction_importers:
             flag = False
-            for listing in sellList:
+            for listing in sell_list:
                 if listing['price'] == importer.bid:
                     listing['amount'] += importer.imported
                     flag = True
             if not flag:
-                sellList.append({'amount': importer.imported, 'price': importer.bid})
+                sell_list.append({'amount': importer.imported, 'price': importer.bid})
 
-        for exporter in auctionExporters:
+        for exporter in auction_exporters:
             flag = False
-            for listing in buyList:
+            for listing in buy_list:
                 if listing['price'] == exporter.bid:
                     listing['amount'] += exporter.exported
                     flag = True
             if not flag:
-                buyList.append({'amount': exporter.exported, 'price': exporter.bid})
+                buy_list.append({'amount': exporter.exported, 'price': exporter.bid})
 
-        sellList.sort(key=lambda item: item['price'])
-        buyList.sort(key=lambda item: item['price'], reverse=True)
+        sell_list.sort(key=lambda item: item['price'])
+        buy_list.sort(key=lambda item: item['price'], reverse=True)
 
-        cumBuy = list(np.cumsum(list(d['amount'] for d in buyList)))
-        cumSell = list(np.cumsum(list(d['amount'] for d in sellList)))
-        sellPriceColumn = list(d['price'] for d in sellList)
-        buyPriceColumn = list(d['price'] for d in buyList)
+        cum_buy = list(np.cumsum(list(d['amount'] for d in buy_list)))
+        cum_sell = list(np.cumsum(list(d['amount'] for d in sell_list)))
+        sell_price_column = list(d['price'] for d in sell_list)
+        buy_price_column = list(d['price'] for d in buy_list)
 
         # Not certain this is the way to do this - it creates all of the points in a stepped graph rather than
         # a smooth one which seems to
-        for i in range(0, len(cumBuy) * 2 - 2, 2):
-            cumBuy.insert(i + 1, cumBuy[i + 1])
-            buyPriceColumn.insert(i + 1, buyPriceColumn[i])
+        for i in range(0, len(cum_buy) * 2 - 2, 2):
+            cum_buy.insert(i + 1, cum_buy[i + 1])
+            buy_price_column.insert(i + 1, buy_price_column[i])
 
-        for i in range(0, len(cumSell) * 2 - 2, 2):
-            cumSell.insert(i + 1, cumSell[i + 1])
-            sellPriceColumn.insert(i + 1, sellPriceColumn[i])
+        for i in range(0, len(cum_sell) * 2 - 2, 2):
+            cum_sell.insert(i + 1, cum_sell[i + 1])
+            sell_price_column.insert(i + 1, sell_price_column[i])
 
-        plt.plot(cumBuy, buyPriceColumn)
-        plt.plot(cumSell, sellPriceColumn)
+        plt.plot(cum_buy, buy_price_column)
+        plt.plot(cum_sell, sell_price_column)
 
-        x, y = intersect.intersection(cumBuy, buyPriceColumn, cumSell, sellPriceColumn)
-
-        # prices = np.arange(FEED_IN_TARIFF, RETAIL_PRICE, 0.01)
+        x, y = intersect.intersection(cum_buy, buy_price_column, cum_sell, sell_price_column)
 
         try:
             plt.plot(x[0], y[0], 'ro')
@@ -101,7 +95,7 @@ def doubleAuction(auctionImporters, auctionExporters):
 
 def auction_winners(users_arg, importers_arg, exporters_arg):
     # calculate the trading price using bids
-    trading_price = doubleAuction(importers_arg, exporters_arg)
+    trading_price = double_auction(importers_arg, exporters_arg)
     traders = set()
     if trading_price:
         trading_price = trading_price
@@ -136,13 +130,12 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.exported, 0, FEED_IN_TARIFF, 0,
                                                         False)
             non_trader.bill += trade_cost
-            # non_trader.bill = (non_trader.exported * FEED_IN_TARIFF) + non_trader.bill
         non_trader.reset()
 
     # TODO: These two blocks can be simplified to one method
-    volumeTraded = 0
+    volume_traded = 0
     for import_trader in (traders.intersection(importers_arg)):
-        volumeTraded -= import_trader.imported
+        volume_traded -= import_trader.imported
         if import_trader.imported <= import_trader.realTradeAmount:
             # they use the committed amount or more - extra purchased from retail
             tariff = RETAIL_PRICE
@@ -158,7 +151,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         import_trader.reset()
 
     for export_trader in (traders - importers_arg):
-        volumeTraded += export_trader.exported
+        volume_traded += export_trader.exported
         if export_trader.exported >= export_trader.realTradeAmount:
             # they sell the committed amount or more - excess sold for FIT
             tariff = FEED_IN_TARIFF
@@ -173,21 +166,9 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         export_trader.bill -= trade_cost
         export_trader.reset()
 
-    print("difference between amount exported and imported (this should be 0):  " + str(volumeTraded))
+    # TODO: This does not work :((((
+    print("difference between amount exported and imported (this should be 0):  " + str(volume_traded))
     return traders | non_traders
-
-
-# def execute_trade(user, tariff, trading_price):
-#     # this simulates the calculations run on the trading platform
-#     real_amount = user.realTradeAmount
-#     imported = user.imported
-#     # bill calculations are in a very weird order so that they work for Pyfhel's methods as they take the + and *
-#     # operators and call their own methods from those in which the first argument must be a Pyfhel object
-#     if user.imported:
-#         user.bill = (imported * trading_price - ((real_amount - imported) * tariff)) + user.bill
-#     else:
-#         exported = user.exported
-#         user.bill = Pyfhel.negate(exported * trading_price - ((real_amount - exported) * tariff)) + user.bill
 
 
 def simulate(trading_periods):
@@ -243,8 +224,6 @@ def simulate(trading_periods):
 
         # for testing only
         for current_user in users:
-            # print("name: " + current_user.name + " imported: " + str(current_user.imported) + " exported: " +
-            #       str(current_user.exported) + " current bill: " + str(current_user.bill))
             print(str(current_user))
 
     return users

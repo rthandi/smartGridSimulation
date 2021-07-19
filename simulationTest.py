@@ -36,36 +36,36 @@ class doubleAuctionTest(unittest.TestCase):
 
     def testOneImporter(self):
         self.auction_importers = {self.alice}
-        res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
+        res = simulation.double_auction(self.auction_importers, self.auction_exporters)
         self.assertEqual(res, None)
 
     def testOneExporter(self):
         self.auction_exporters = {self.alice}
-        res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
+        res = simulation.double_auction(self.auction_importers, self.auction_exporters)
         self.assertEqual(res, None)
 
     def testNoIntersection(self):
         self.auction_importers = {self.alice}
         self.auction_exporters = {self.bob}
-        res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
+        res = simulation.double_auction(self.auction_importers, self.auction_exporters)
         self.assertEqual(res, None)
 
     def testIntersectionEven(self):
         self.auction_importers = {self.charlie, self.dean}
         self.auction_exporters = {self.alice, self.bob}
-        res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
+        res = simulation.double_auction(self.auction_importers, self.auction_exporters)
         self.assertEqual(res, 10)
 
     def testIntersectionUnevenImport(self):
         self.auction_importers = {self.charlie, self.erin}
         self.auction_exporters = {self.alice, self.bob}
-        res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
+        res = simulation.double_auction(self.auction_importers, self.auction_exporters)
         self.assertEqual(res, 5)
 
     def testCurve(self):
         self.auction_importers = {self.charlie, self.erin, self.fred}
         self.auction_exporters = {self.alice, self.bob, self.dean}
-        res = simulation.doubleAuction(self.auction_importers, self.auction_exporters)
+        res = simulation.double_auction(self.auction_importers, self.auction_exporters)
         self.assertEqual(res, 5)
 
 

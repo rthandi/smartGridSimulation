@@ -26,7 +26,6 @@ class TradingPlatform:
             return period_bill
         else:
             exported = self.encryption.negate(committed_amount)
-            # TODO: check this is correct equation with weird negations
             period_bill = (exported * trading_price - ((exported + real_amount) * tariff))
             user.bill += period_bill
             return period_bill

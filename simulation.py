@@ -4,6 +4,9 @@ from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 import matplotlib.pyplot as plt
 import intersect
 
+import TradingPlatform
+import User
+
 # constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
@@ -13,59 +16,6 @@ USER_COUNT = 20
 
 # Notes: Make it easy to compare to using the normal markets
 # Look at homomorphic encrypt libs
-
-class User:
-    def __init__(self, name=None):
-        self.name = name
-        self.imported = 0
-        self.exported = 0
-        self.realTradeAmount = 0
-        self.bill = 0
-        self.bid = 0
-        self.encryption = Pyfhel()
-        self.encryption.contextGen(p=65537)
-        self.encryption.keyGen()
-
-    def reset(self):
-        self.imported = 0
-        self.exported = 0
-        self.realTradeAmount = 0
-        self.bid = 0
-
-
-class PlatformUser:
-    def __init__(self, name, bill, context, public_key):
-        self.name = name
-        self.bill = bill
-        self.context = context
-        self.public_key = public_key
-
-
-class TradingPlatform:
-    def __init__(self):
-        self.encryption = Pyfhel()
-        self.userDict = {}
-
-    def load_users(self, users):
-        for user in users:
-            self.userDict[user.name] = PlatformUser(user.name, 0, user.encryption.to_bytes_context(),
-                                                    user.encryption.to_bytes_publicKey())
-
-    def execute_trade(self, name, committed_amount, real_amount, trading_price, tariff, imported):
-        user = self.userDict[name]
-        self.encryption.from_bytes_context(user.context)
-        self.encryption.from_bytes_publicKey(user.public_key)
-        # bill calculations are in a very weird order so that they work for Pyfhel's methods as they take the + and *
-        # operators and call their own methods from those in which the first argument must be a Pyfhel object
-        if imported:
-            period_bill = (committed_amount * trading_price - ((real_amount - imported) * tariff))
-            user.bill += period_bill
-            return period_bill
-        else:
-            exported = self.encryption.negate(committed_amount)
-            period_bill = (exported * trading_price - ((real_amount - exported) * tariff))
-            user.bill -= period_bill
-            return period_bill
 
 
 def doubleAuction(auctionImporters, auctionExporters):
@@ -169,39 +119,28 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     return traders, non_traders, trading_price
 
 
-def set_up_trades(traders, non_traders, importers_arg, trading_price):
+def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_platform):
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
             non_trader.imported = non_trader.encryption.encryptFrac(non_trader.imported)
             non_trader.realTradeAmount = non_trader.imported
-            execute_trade(non_trader, 0, RETAIL_PRICE)
+            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.imported, 0, RETAIL_PRICE, 0, True)
+            non_trader.bill += trade_cost
             # This commented method is an alternative - it should be more efficient but makes it hard/messier to
             # simulate it being run on the trading platform
             # non_trader.bill = (non_trader.imported * RETAIL_PRICE) + non_trader.bill
         else:
             non_trader.exported = non_trader.encryption.encryptFrac(non_trader.exported)
             non_trader.realTradeAmount = non_trader.exported
-            execute_trade(non_trader, 0, FEED_IN_TARIFF)
+            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.exported, 0, FEED_IN_TARIFF, 0,
+                                                        False)
+            non_trader.bill += trade_cost
             # non_trader.bill = (non_trader.exported * FEED_IN_TARIFF) + non_trader.bill
         non_trader.reset()
 
     # TODO: These two blocks can be simplified to one method
     volumeTraded = 0
-    for export_trader in (traders - importers_arg):
-        volumeTraded += export_trader.exported
-        if export_trader.exported >= export_trader.realTradeAmount:
-            # they sell the committed amount or more - excess sold for FIT
-            tariff = FEED_IN_TARIFF
-        else:
-            # they sell less than the committed amount - buy from retail
-            tariff = RETAIL_PRICE
-        # encrypt user's data before it is sent to trading platform to execute the trade
-        export_trader.exported = export_trader.encryption.encryptFrac(export_trader.exported)
-        export_trader.realTradeAmount = export_trader.encryption.encryptFrac(export_trader.realTradeAmount)
-        execute_trade(export_trader, tariff, trading_price)
-        export_trader.reset()
-
     for import_trader in (traders.intersection(importers_arg)):
         volumeTraded -= import_trader.imported
         if import_trader.imported <= import_trader.realTradeAmount:
@@ -213,24 +152,42 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price):
         # encrypt user's data before it is sent to trading platform to execute the trade
         import_trader.imported = import_trader.encryption.encryptFrac(import_trader.imported)
         import_trader.realTradeAmount = import_trader.encryption.encryptFrac(import_trader.realTradeAmount)
-        execute_trade(import_trader, tariff, trading_price)
+        trade_cost = trading_platform.execute_trade(import_trader.name, import_trader.imported,
+                                                    import_trader.realTradeAmount, trading_price, tariff, True)
+        import_trader.bill += trade_cost
         import_trader.reset()
+
+    for export_trader in (traders - importers_arg):
+        volumeTraded += export_trader.exported
+        if export_trader.exported >= export_trader.realTradeAmount:
+            # they sell the committed amount or more - excess sold for FIT
+            tariff = FEED_IN_TARIFF
+        else:
+            # they sell less than the committed amount - buy from retail
+            tariff = RETAIL_PRICE
+        # encrypt user's data before it is sent to trading platform to execute the trade
+        export_trader.exported = export_trader.encryption.encryptFrac(export_trader.exported)
+        export_trader.realTradeAmount = export_trader.encryption.encryptFrac(export_trader.realTradeAmount)
+        trade_cost = trading_platform.execute_trade(export_trader.name, export_trader.exported,
+                                                    export_trader.realTradeAmount, trading_price, tariff, False)
+        export_trader.bill -= trade_cost
+        export_trader.reset()
 
     print("difference between amount exported and imported (this should be 0):  " + str(volumeTraded))
     return traders | non_traders
 
 
-def execute_trade(user, tariff, trading_price):
-    # this simulates the calculations run on the trading platform
-    real_amount = user.realTradeAmount
-    imported = user.imported
-    # bill calculations are in a very weird order so that they work for Pyfhel's methods as they take the + and *
-    # operators and call their own methods from those in which the first argument must be a Pyfhel object
-    if user.imported:
-        user.bill = (imported * trading_price - ((real_amount - imported) * tariff)) + user.bill
-    else:
-        exported = user.exported
-        user.bill = Pyfhel.negate(exported * trading_price - ((real_amount - exported) * tariff)) + user.bill
+# def execute_trade(user, tariff, trading_price):
+#     # this simulates the calculations run on the trading platform
+#     real_amount = user.realTradeAmount
+#     imported = user.imported
+#     # bill calculations are in a very weird order so that they work for Pyfhel's methods as they take the + and *
+#     # operators and call their own methods from those in which the first argument must be a Pyfhel object
+#     if user.imported:
+#         user.bill = (imported * trading_price - ((real_amount - imported) * tariff)) + user.bill
+#     else:
+#         exported = user.exported
+#         user.bill = Pyfhel.negate(exported * trading_price - ((real_amount - exported) * tariff)) + user.bill
 
 
 def simulate(trading_periods):
@@ -253,7 +210,10 @@ def simulate(trading_periods):
     importers = set()
     exporters = set()
     for i in range(USER_COUNT):
-        users.add(User(str(i)))
+        users.add(User.User(str(i)))
+
+    trading_platform = TradingPlatform.TradingPlatform()
+    trading_platform.load_users(users)
 
     for user in users:
         if random.randint(1, 2) == 1:
@@ -279,14 +239,13 @@ def simulate(trading_periods):
             else:
                 trader.realTradeAmount = max(trader.exported, trader.imported)
 
-        users = set_up_trades(traders, non_traders, importers, trading_price)
+        users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform)
 
         # for testing only
         for current_user in users:
             # print("name: " + current_user.name + " imported: " + str(current_user.imported) + " exported: " +
             #       str(current_user.exported) + " current bill: " + str(current_user.bill))
-            print("name: " + current_user.name + " bill: " +
-                  str(round(current_user.encryption.decryptFrac(current_user.bill), 2)))
+            print(str(current_user))
 
     return users
 

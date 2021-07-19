@@ -137,14 +137,20 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price):
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
-            non_trader.imported = non_trader.encryption.encryptInt(non_trader.imported)
-            non_trader.bill += non_trader.imported * RETAIL_PRICE
+            non_trader.imported = non_trader.encryption.encryptFrac(non_trader.imported)
+            non_trader.realTradeAmount = non_trader.imported
+            execute_trade(non_trader, 0, RETAIL_PRICE)
+            # This commented method is an alternative - it should be more efficient but makes it hard/messier to
+            # simulate it being run on the trading platform
+            # non_trader.bill = (non_trader.imported * RETAIL_PRICE) + non_trader.bill
         else:
-            non_trader.exported = non_trader.encryption.encryptInt(non_trader.exported)
-            non_trader.bill -= non_trader.exported * FEED_IN_TARIFF
+            non_trader.exported = non_trader.encryption.encryptFrac(non_trader.exported)
+            non_trader.realTradeAmount = non_trader.exported
+            execute_trade(non_trader, 0, FEED_IN_TARIFF)
+            # non_trader.bill = (non_trader.exported * FEED_IN_TARIFF) + non_trader.bill
         non_trader.reset()
 
-    #TODO: These two blocks can be simplified to one method
+    # TODO: These two blocks can be simplified to one method
     volumeTraded = 0
     for export_trader in (traders - importers_arg):
         volumeTraded += export_trader.exported
@@ -155,8 +161,8 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price):
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
         # encrypt user's data before it is sent to trading platform to execute the trade
-        export_trader.exported = export_trader.encryption.encryptInt(export_trader.exported)
-        export_trader.realTradeAmount = export_trader.encryption.encryptInt(export_trader.realTradeAmount)
+        export_trader.exported = export_trader.encryption.encryptFrac(export_trader.exported)
+        export_trader.realTradeAmount = export_trader.encryption.encryptFrac(export_trader.realTradeAmount)
         execute_trade(export_trader, tariff, trading_price)
         export_trader.reset()
 
@@ -169,8 +175,8 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price):
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
         # encrypt user's data before it is sent to trading platform to execute the trade
-        import_trader.imported = import_trader.encryption.encryptInt(import_trader.imported)
-        import_trader.realTradeAmount = import_trader.encryption.encryptInt(import_trader.realTradeAmount)
+        import_trader.imported = import_trader.encryption.encryptFrac(import_trader.imported)
+        import_trader.realTradeAmount = import_trader.encryption.encryptFrac(import_trader.realTradeAmount)
         execute_trade(import_trader, tariff, trading_price)
         import_trader.reset()
 
@@ -181,8 +187,13 @@ def execute_trade(user, tariff, trading_price):
     # this simulates the calculations run on the trading platform
     real_amount = user.realTradeAmount
     imported = user.imported
+    # bill calculations are in a very weird order so that they work for Pyfhel's methods as they take the + and *
+    # operators and call their own methods from those in which the first argument must be a Pyfhel object
     if user.imported:
-        user.bill -= imported * trading_price - ((real_amount - imported) * tariff)
+        user.bill = (imported * trading_price - ((real_amount - imported) * tariff)) + user.bill
+    else:
+        exported = user.exported
+        user.bill = exported * trading_price - ((real_amount - exported) * tariff) + user.bill
 
 def simulate(trading_periods):
     # alice = User("Alice")
@@ -233,9 +244,11 @@ def simulate(trading_periods):
         users = set_up_trades(traders, non_traders, importers, trading_price)
 
         # for testing only
-        # for current_user in users:
-        #     print("name: " + current_user.name + " imported: " + str(current_user.imported) + " exported: " +
-        #           str(current_user.exported) + " current bill: " + str(current_user.bill))
+        for current_user in users:
+            # print("name: " + current_user.name + " imported: " + str(current_user.imported) + " exported: " +
+            #       str(current_user.exported) + " current bill: " + str(current_user.bill))
+            print("name: " + current_user.name + " bill: " +
+                  str(round(current_user.encryption.decryptFrac(current_user.bill), 2)))
 
     return users
 

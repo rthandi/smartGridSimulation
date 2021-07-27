@@ -6,6 +6,7 @@ import intersect
 
 from TradingPlatform import TradingPlatform
 from User import User
+from Supplier import Supplier
 
 # constants
 RETAIL_PRICE = 10
@@ -113,22 +114,24 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     return traders, non_traders, trading_price
 
 
-def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_platform):
+def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_platform, supplier_encrypt, supplier):
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
-            non_trader.imported = non_trader.encryption.encryptFrac(non_trader.imported)
+            non_trader.imported = supplier_encrypt.encryptFrac(non_trader.imported)
             non_trader.realTradeAmount = non_trader.imported
-            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.imported, 0, RETAIL_PRICE, 0, True)
+            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.imported,
+                                                        non_trader.realTradeAmount, RETAIL_PRICE, 0, True, supplier)
             non_trader.bill += trade_cost
             # This commented method is an alternative - it should be more efficient but makes it hard/messier to
             # simulate it being run on the trading platform
             # non_trader.bill = (non_trader.imported * RETAIL_PRICE) + non_trader.bill
         else:
-            non_trader.exported = non_trader.encryption.encryptFrac(non_trader.exported)
+            non_trader.exported = supplier_encrypt.encryptFrac(non_trader.exported)
             non_trader.realTradeAmount = non_trader.exported
-            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.exported, 0, FEED_IN_TARIFF, 0,
-                                                        False)
+            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.exported,
+                                                        non_trader.realTradeAmount, FEED_IN_TARIFF, 0,
+                                                        False, supplier)
             non_trader.bill += trade_cost
         non_trader.reset()
 
@@ -143,10 +146,10 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
         # encrypt user's data before it is sent to trading platform to execute the trade
-        import_trader.imported = import_trader.encryption.encryptFrac(import_trader.imported)
-        import_trader.realTradeAmount = import_trader.encryption.encryptFrac(import_trader.realTradeAmount)
+        import_trader.imported = supplier_encrypt.encryptFrac(import_trader.imported)
+        import_trader.realTradeAmount = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
         trade_cost = trading_platform.execute_trade(import_trader.name, import_trader.imported,
-                                                    import_trader.realTradeAmount, trading_price, tariff, True)
+                                                    import_trader.realTradeAmount, trading_price, tariff, True, supplier)
         import_trader.bill += trade_cost
         import_trader.reset()
 
@@ -159,10 +162,10 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
         # encrypt user's data before it is sent to trading platform to execute the trade
-        export_trader.exported = export_trader.encryption.encryptFrac(export_trader.exported)
-        export_trader.realTradeAmount = export_trader.encryption.encryptFrac(export_trader.realTradeAmount)
+        export_trader.exported = supplier_encrypt.encryptFrac(export_trader.exported)
+        export_trader.realTradeAmount = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
         trade_cost = trading_platform.execute_trade(export_trader.name, export_trader.exported,
-                                                    export_trader.realTradeAmount, trading_price, tariff, False)
+                                                    export_trader.realTradeAmount, trading_price, tariff, False, supplier)
         export_trader.bill -= trade_cost
         export_trader.reset()
 
@@ -187,13 +190,22 @@ def simulate(trading_periods):
     # importers = {alice, bob, charlie, dean, erin, fred}
     # exporters = {gary, harry, imogen, john}
 
+    supplier = Supplier()
+    supplier_key = supplier.get_pub_key()
+    supplier_encrypt = Pyfhel()
+    supplier_encrypt.contextGen(p=65537)
+    supplier_encrypt.from_bytes_publicKey(supplier_key)
+    encrypted_zero = supplier_encrypt.encryptFrac(0)
+
     users = set()
     importers = set()
     exporters = set()
     for i in range(USER_COUNT):
-        users.add(User(str(i)))
+        users.add(User(str(i), encrypted_zero))
 
-    trading_platform = TradingPlatform()
+    supplier.load_users(users)
+
+    trading_platform = TradingPlatform(supplier_key)
     trading_platform.load_users(users)
 
     for user in users:
@@ -220,11 +232,13 @@ def simulate(trading_periods):
             else:
                 trader.realTradeAmount = max(trader.exported, trader.imported)
 
-        users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform)
+        users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform, supplier_encrypt, supplier)
 
         # for testing only
         for current_user in users:
             print(str(current_user))
+
+        supplier.print_bills()
 
     return users
 

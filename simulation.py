@@ -131,6 +131,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
             non_trader.imported = supplier_encrypt.encryptFrac(non_trader.imported)
+            open('test.txt', "wb").close() # clear file
             double_encrypted = platform_key.encrypt(
                 non_trader.imported.to_bytes(),
                 padding.OAEP(
@@ -139,12 +140,14 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
                     label=None
                 )
             )
+            with open('test.txt', "ab") as f: f.write(double_encrypted)
             non_trader.realTradeAmount = double_encrypted
             trade_cost = trading_platform.execute_trade(non_trader.name, double_encrypted, 0, RETAIL_PRICE, 0, True)
             # This should be run separately by the user but doesn't really matter in this case
             non_trader.bill += trade_cost
         else:
             non_trader.exported = supplier_encrypt.encryptFrac(non_trader.exported)
+            open('test.txt', "wb").close() # clear file
             double_encrypted = platform_key.encrypt(
                 non_trader.exported.to_bytes(),
                 padding.OAEP(
@@ -153,6 +156,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
                     label=None
                 )
             )
+            with open('test.txt', "ab") as f: f.write(double_encrypted)
             non_trader.realTradeAmount = double_encrypted
             trade_cost = trading_platform.execute_trade(non_trader.name, double_encrypted, 0, FEED_IN_TARIFF, 0,
                                                         False)
@@ -172,6 +176,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
 
         # encrypt user's data before it is sent to trading platform to execute the trade
         import_trader.imported = supplier_encrypt.encryptFrac(import_trader.imported)
+        open('test.txt', "wb").close() # clear file
         double_encrypted_imported = platform_key.encrypt(
             import_trader.imported.to_bytes(),
             padding.OAEP(
@@ -180,8 +185,10 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
                 label=None
             )
         )
+        with open('test.txt', "ab") as f: f.write(double_encrypted)
 
         import_trader.realTradeAmount = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
+        open('test.txt', "wb").close() # clear file
         double_encrypted_real_amount = platform_key.encrypt(
             import_trader.realTradeAmount.to_bytes(),
             padding.OAEP(
@@ -190,6 +197,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
                 label=None
             )
         )
+        with open('test.txt', "ab") as f: f.write(double_encrypted)
 
         trade_cost = trading_platform.execute_trade(import_trader.name, double_encrypted_imported,
                                                     double_encrypted_real_amount, trading_price, tariff, True)
@@ -207,6 +215,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
 
         # encrypt user's data before it is sent to trading platform to execute the trade
         export_trader.exported = supplier_encrypt.encryptFrac(export_trader.exported)
+        open('test.txt', "wb").close() # clear file
         double_encrypted_exported = platform_key.encrypt(
             export_trader.exported.to_bytes(),
             padding.OAEP(
@@ -215,8 +224,10 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
                 label=None
             )
         )
+        with open('test.txt', "ab") as f: f.write(double_encrypted)
 
         export_trader.realTradeAmount = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
+        open('test.txt', "wb").close() # clear file
         double_encrypted_real_amount = platform_key.encrypt(
             export_trader.realTradeAmount.to_bytes(),
             padding.OAEP(
@@ -225,6 +236,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
                 label=None
             )
         )
+        with open('test.txt', "ab") as f: f.write(double_encrypted)
 
         trade_cost = trading_platform.execute_trade(export_trader.name, double_encrypted_exported,
                                                     double_encrypted_real_amount, trading_price, tariff, False)

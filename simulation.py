@@ -13,6 +13,8 @@ RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
 TRADING_PERIODS = 10
 USER_COUNT = 20
+# false means no trading will occur
+TRADE_MODE = True
 
 #Idea: hash the encrypted stuff being sent for verification it hasn't been tampered with
 
@@ -99,7 +101,7 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     # calculate the trading price using bids
     trading_price = double_auction(importers_arg, exporters_arg)
     traders = set()
-    if trading_price:
+    if trading_price and TRADE_MODE:
         trading_price = trading_price
         print("Trading price for this trading period is: " + str(trading_price))
         for current_user in users_arg:
@@ -107,6 +109,8 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
             if (current_user in importers_arg and current_user.bid >= trading_price
                     or current_user in exporters_arg and current_user.bid <= trading_price):
                 traders.add(current_user)
+    elif not TRADE_MODE:
+        print("Trade mode is not active")
     else:
         print("No intersection of supply demand curves - no trading will occur this period")
 

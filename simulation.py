@@ -11,9 +11,10 @@ from Supplier import Supplier
 # constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
-TRADING_PERIODS = 1
+TRADING_PERIODS = 10
 USER_COUNT = 20
 
+#Idea: hash the encrypted stuff being sent for verification it hasn't been tampered with
 
 def double_auction(auction_importers, auction_exporters):
     # %%% UNCOMMENT THE BLOCK BELOW FOR EASY DEBUGGING OF THIS METHOD %%%
@@ -149,7 +150,8 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         import_trader.imported = supplier_encrypt.encryptFrac(import_trader.imported)
         import_trader.realTradeAmount = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
         trade_cost = trading_platform.execute_trade(import_trader.name, import_trader.imported,
-                                                    import_trader.realTradeAmount, trading_price, tariff, True, supplier)
+                                                    import_trader.realTradeAmount, trading_price,
+                                                    tariff, True, supplier)
         import_trader.bill += trade_cost
         import_trader.reset()
 
@@ -165,7 +167,8 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         export_trader.exported = supplier_encrypt.encryptFrac(export_trader.exported)
         export_trader.realTradeAmount = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
         trade_cost = trading_platform.execute_trade(export_trader.name, export_trader.exported,
-                                                    export_trader.realTradeAmount, trading_price, tariff, False, supplier)
+                                                    export_trader.realTradeAmount, trading_price,
+                                                    tariff, False, supplier)
         export_trader.bill -= trade_cost
         export_trader.reset()
 

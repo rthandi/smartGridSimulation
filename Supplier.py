@@ -24,4 +24,4 @@ class Supplier:
     def print_bills(self):
         for user in self.userDict:
             print("From Supplier: User: " + self.userDict[user]['name'] + " bill: " +
-                  str(round(self.encryption.decryptFrac(self.userDict[user]['bill']))), 2)
+                  str(round(self.encryption.decryptFrac(self.userDict[user]['bill']), 2)))

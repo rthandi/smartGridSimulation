@@ -13,31 +13,31 @@ class TestTradingPlatform(TestCase):
 
     def test_load_users_empty(self):
         self.trading_platform.load_users(set())
-        self.assertEqual(self.trading_platform.userDict, {})
+        self.assertEqual(self.trading_platform.user_dict, {})
 
     def test_load_users_one(self):
         alice = User('Alice')
         self.trading_platform.load_users({alice})
-        self.assertEqual(self.trading_platform.userDict['Alice'].name, 'Alice')
-        self.assertIsInstance(self.trading_platform.userDict['Alice'].context, bytes)
-        self.assertIsInstance(self.trading_platform.userDict['Alice'].public_key, bytes)
-        self.assertEqual(len(self.trading_platform.userDict), 1)
+        self.assertEqual(self.trading_platform.user_dict['Alice'].name, 'Alice')
+        self.assertIsInstance(self.trading_platform.user_dict['Alice'].context, bytes)
+        self.assertIsInstance(self.trading_platform.user_dict['Alice'].public_key, bytes)
+        self.assertEqual(len(self.trading_platform.user_dict), 1)
 
     def test_load_users_multiple(self):
         alice = User('Alice')
         bob = User('Bob')
         charlie = User('Charlie')
         self.trading_platform.load_users({alice, bob, charlie})
-        self.assertEqual(self.trading_platform.userDict['Alice'].name, 'Alice')
-        self.assertIsInstance(self.trading_platform.userDict['Alice'].context, bytes)
-        self.assertIsInstance(self.trading_platform.userDict['Alice'].public_key, bytes)
-        self.assertEqual(self.trading_platform.userDict['Bob'].name, 'Bob')
-        self.assertIsInstance(self.trading_platform.userDict['Bob'].context, bytes)
-        self.assertIsInstance(self.trading_platform.userDict['Bob'].public_key, bytes)
-        self.assertEqual(self.trading_platform.userDict['Charlie'].name, 'Charlie')
-        self.assertIsInstance(self.trading_platform.userDict['Charlie'].context, bytes)
-        self.assertIsInstance(self.trading_platform.userDict['Charlie'].public_key, bytes)
-        self.assertEqual(len(self.trading_platform.userDict), 3)
+        self.assertEqual(self.trading_platform.user_dict['Alice'].name, 'Alice')
+        self.assertIsInstance(self.trading_platform.user_dict['Alice'].context, bytes)
+        self.assertIsInstance(self.trading_platform.user_dict['Alice'].public_key, bytes)
+        self.assertEqual(self.trading_platform.user_dict['Bob'].name, 'Bob')
+        self.assertIsInstance(self.trading_platform.user_dict['Bob'].context, bytes)
+        self.assertIsInstance(self.trading_platform.user_dict['Bob'].public_key, bytes)
+        self.assertEqual(self.trading_platform.user_dict['Charlie'].name, 'Charlie')
+        self.assertIsInstance(self.trading_platform.user_dict['Charlie'].context, bytes)
+        self.assertIsInstance(self.trading_platform.user_dict['Charlie'].public_key, bytes)
+        self.assertEqual(len(self.trading_platform.user_dict), 3)
 
     def test_execute_trade_no_change_import(self):
         alice = User('Alice')

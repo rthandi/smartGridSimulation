@@ -7,17 +7,18 @@ class TradingPlatform:
         self.encryption = Pyfhel()
         self.encryption.contextGen(p=65537)
         self.encryption.from_bytes_publicKey(key)
-        self.userDict = {}
+        self.user_dict = {}
+        self.period_counter = 0
 
     def load_users(self, users):
         for user in users:
-            self.userDict[user.name] = self.encryption.encryptFrac(0)
-            print("trading platform loaded: " + str(self.userDict[user.name]))
+            self.user_dict[user.name] = self.encryption.encryptFrac(0)
+            print("trading platform loaded: " + str(self.user_dict[user.name]))
 
     def get_pub_key(self):
         return self.encryption.to_bytes_publicKey()
 
-    def execute_trade(self, name, committed_amount, real_amount, trading_price, tariff, imported, supplier):
+    def execute_trade(self, name, committed_amount, real_amount, trading_price, tariff, imported, supplier, period_count):
         # self.encryption.from_bytes_context(user.context)
         # committed_amount = self.encryption.decryptFrac(committed_amount)
         # real_amount = self.encryption.decryptFrac(real_amount)
@@ -26,12 +27,14 @@ class TradingPlatform:
         # operators and call their own methods from those in which the first argument must be a Pyfhel object
         if imported:
             period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * - tariff))
-            self.userDict[name] += period_bill
-            supplier.update_bill(name, period_bill)
-            return period_bill
         else:
             exported = self.encryption.negate(committed_amount)
             period_bill = (exported * trading_price - ((exported + real_amount) * tariff))
-            self.userDict[name] += period_bill
-            supplier.update_bill(name, period_bill)
-            return period_bill
+
+        self.user_dict[name] += period_bill
+
+        if (period_count + 1) % 24 == 0:
+            supplier.update_bill(name, self.user_dict[name])
+            self.user_dict[name] = self.encryption.encryptFrac(0)
+
+        return period_bill

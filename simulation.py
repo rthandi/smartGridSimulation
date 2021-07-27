@@ -3,6 +3,11 @@ import numpy as np
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 import matplotlib.pyplot as plt
 import intersect
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
 
 from TradingPlatform import TradingPlatform
 from User import User
@@ -11,10 +16,9 @@ from Supplier import Supplier
 # constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
-TRADING_PERIODS = 10
+TRADING_PERIODS = 1
 USER_COUNT = 20
 
-#Idea: hash the encrypted stuff being sent for verification it hasn't been tampered with
 
 def double_auction(auction_importers, auction_exporters):
     # %%% UNCOMMENT THE BLOCK BELOW FOR EASY DEBUGGING OF THIS METHOD %%%
@@ -115,24 +119,43 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     return traders, non_traders, trading_price
 
 
-def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_platform, supplier_encrypt, supplier):
+def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_platform, supplier_key, platform_key):
+    supplier_encrypt = Pyfhel()
+    platform_encrypt = Pyfhel()
+    supplier_encrypt.contextGen(p=65537)
+    platform_encrypt.contextGen(p=65537)
+    supplier_encrypt.from_bytes_publicKey(supplier_key)
+    # platform_encrypt.from_bytes_publicKey(platform_key)
+
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
             non_trader.imported = supplier_encrypt.encryptFrac(non_trader.imported)
-            non_trader.realTradeAmount = non_trader.imported
-            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.imported,
-                                                        non_trader.realTradeAmount, RETAIL_PRICE, 0, True, supplier)
+            double_encrypted = platform_key.encrypt(
+                non_trader.imported.to_bytes(),
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            non_trader.realTradeAmount = double_encrypted
+            trade_cost = trading_platform.execute_trade(non_trader.name, double_encrypted, 0, RETAIL_PRICE, 0, True)
+            # This should be run separately by the user but doesn't really matter in this case
             non_trader.bill += trade_cost
-            # This commented method is an alternative - it should be more efficient but makes it hard/messier to
-            # simulate it being run on the trading platform
-            # non_trader.bill = (non_trader.imported * RETAIL_PRICE) + non_trader.bill
         else:
             non_trader.exported = supplier_encrypt.encryptFrac(non_trader.exported)
-            non_trader.realTradeAmount = non_trader.exported
-            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.exported,
-                                                        non_trader.realTradeAmount, FEED_IN_TARIFF, 0,
-                                                        False, supplier)
+            double_encrypted = platform_key.encrypt(
+                non_trader.exported.to_bytes(),
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            non_trader.realTradeAmount = double_encrypted
+            trade_cost = trading_platform.execute_trade(non_trader.name, double_encrypted, 0, FEED_IN_TARIFF, 0,
+                                                        False)
             non_trader.bill += trade_cost
         non_trader.reset()
 
@@ -146,12 +169,30 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         else:
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
+
         # encrypt user's data before it is sent to trading platform to execute the trade
         import_trader.imported = supplier_encrypt.encryptFrac(import_trader.imported)
+        double_encrypted_imported = platform_key.encrypt(
+            import_trader.imported.to_bytes(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
         import_trader.realTradeAmount = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
-        trade_cost = trading_platform.execute_trade(import_trader.name, import_trader.imported,
-                                                    import_trader.realTradeAmount, trading_price,
-                                                    tariff, True, supplier)
+        double_encrypted_real_amount = platform_key.encrypt(
+            import_trader.realTradeAmount.to_bytes(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        trade_cost = trading_platform.execute_trade(import_trader.name, double_encrypted_imported,
+                                                    double_encrypted_real_amount, trading_price, tariff, True)
         import_trader.bill += trade_cost
         import_trader.reset()
 
@@ -163,12 +204,30 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         else:
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
+
         # encrypt user's data before it is sent to trading platform to execute the trade
         export_trader.exported = supplier_encrypt.encryptFrac(export_trader.exported)
+        double_encrypted_exported = platform_key.encrypt(
+            export_trader.exported.to_bytes(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
         export_trader.realTradeAmount = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
-        trade_cost = trading_platform.execute_trade(export_trader.name, export_trader.exported,
-                                                    export_trader.realTradeAmount, trading_price,
-                                                    tariff, False, supplier)
+        double_encrypted_real_amount = platform_key.encrypt(
+            export_trader.realTradeAmount.to_bytes(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        trade_cost = trading_platform.execute_trade(export_trader.name, double_encrypted_exported,
+                                                    double_encrypted_real_amount, trading_price, tariff, False)
         export_trader.bill -= trade_cost
         export_trader.reset()
 
@@ -176,6 +235,14 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
     print("difference between amount exported and imported (this should be 0):  " + str(volume_traded))
     return traders | non_traders
 
+# From https://towardsdatascience.com/asymmetric-encrypting-of-sensitive-data-in-memory-python-e20fdebc521c
+def read_public (filename = "TradingPlatformPubKey.pem"):
+    with open("TradingPlatformPubKey.pem", "rb") as key_file:
+        public_key = serialization.load_pem_public_key(
+            key_file.read(),
+            backend=default_backend()
+        )
+    return public_key
 
 def simulate(trading_periods):
     # alice = User("Alice")
@@ -195,21 +262,16 @@ def simulate(trading_periods):
 
     supplier = Supplier()
     supplier_key = supplier.get_pub_key()
-    supplier_encrypt = Pyfhel()
-    supplier_encrypt.contextGen(p=65537)
-    supplier_encrypt.from_bytes_publicKey(supplier_key)
-    encrypted_zero = supplier_encrypt.encryptFrac(0)
 
     users = set()
     importers = set()
     exporters = set()
     for i in range(USER_COUNT):
-        users.add(User(str(i), encrypted_zero))
-
-    supplier.load_users(users)
+        users.add(User(str(i)))
 
     trading_platform = TradingPlatform(supplier_key)
     trading_platform.load_users(users)
+    platform_key = read_public()
 
     for user in users:
         if random.randint(1, 2) == 1:
@@ -235,13 +297,11 @@ def simulate(trading_periods):
             else:
                 trader.realTradeAmount = max(trader.exported, trader.imported)
 
-        users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform, supplier_encrypt, supplier)
+        users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform, supplier_key, platform_key)
 
         # for testing only
         for current_user in users:
             print(str(current_user))
-
-        supplier.print_bills()
 
     return users
 

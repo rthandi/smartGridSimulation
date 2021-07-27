@@ -52,7 +52,7 @@ class TestTradingPlatform(TestCase):
         self.assertIsInstance(res_execute, PyCtxt)
 
         # check trading platform cannot decrypt
-        res_decrypt_fail = self.trading_platform.encryption.decryptFrac(res_execute)
+        res_decrypt_fail = self.trading_platform.homoEncryption.decryptFrac(res_execute)
         self.assertNotEqual(res_decrypt_fail, 50)
 
         # check user can decrypt
@@ -72,7 +72,7 @@ class TestTradingPlatform(TestCase):
         self.assertIsInstance(res_execute, PyCtxt)
 
         # check trading platform cannot decrypt
-        res_decrypt_fail = self.trading_platform.encryption.decryptFrac(res_execute)
+        res_decrypt_fail = self.trading_platform.homoEncryption.decryptFrac(res_execute)
         self.assertNotEqual(res_decrypt_fail, -50)
 
         # check user can decrypt
@@ -92,7 +92,7 @@ class TestTradingPlatform(TestCase):
         self.assertIsInstance(res_execute, PyCtxt)
 
         # check trading platform cannot decrypt
-        res_decrypt_fail = self.trading_platform.encryption.decryptFrac(res_execute)
+        res_decrypt_fail = self.trading_platform.homoEncryption.decryptFrac(res_execute)
         self.assertNotEqual(res_decrypt_fail, 46)
 
         # check user can decrypt
@@ -112,7 +112,7 @@ class TestTradingPlatform(TestCase):
         self.assertIsInstance(res_execute, PyCtxt)
 
         # check trading platform cannot decrypt
-        res_decrypt_fail = self.trading_platform.encryption.decryptFrac(res_execute)
+        res_decrypt_fail = self.trading_platform.homoEncryption.decryptFrac(res_execute)
         self.assertNotEqual(res_decrypt_fail, 70)
 
         # check user can decrypt
@@ -132,7 +132,7 @@ class TestTradingPlatform(TestCase):
         self.assertIsInstance(res_execute, PyCtxt)
 
         # check trading platform cannot decrypt
-        res_decrypt_fail = self.trading_platform.encryption.decryptFrac(res_execute)
+        res_decrypt_fail = self.trading_platform.homoEncryption.decryptFrac(res_execute)
         self.assertNotEqual(res_decrypt_fail, -30)
 
         # check user can decrypt
@@ -152,7 +152,7 @@ class TestTradingPlatform(TestCase):
         self.assertIsInstance(res_execute, PyCtxt)
 
         # check trading platform cannot decrypt
-        res_decrypt_fail = self.trading_platform.encryption.decryptFrac(res_execute)
+        res_decrypt_fail = self.trading_platform.homoEncryption.decryptFrac(res_execute)
         self.assertNotEqual(res_decrypt_fail, -54)
 
         # check user can decrypt

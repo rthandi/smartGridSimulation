@@ -16,31 +16,10 @@ USER_COUNT = 20
 # false means no trading will occur
 TRADE_MODE = True
 
-#Idea: hash the encrypted stuff being sent for verification it hasn't been tampered with
+
+# Idea: hash the encrypted stuff being sent for verification it hasn't been tampered with
 
 def double_auction(auction_importers, auction_exporters):
-    # %%% UNCOMMENT THE BLOCK BELOW FOR EASY DEBUGGING OF THIS METHOD %%%
-    """"
-    alice.bid = 5
-    alice.exported = 20
-    alice.imported = 15
-    bob.bid = 15
-    bob.exported = 10
-    bob.imported = 27
-    charlie.bid = 10
-    charlie.exported = 25
-    charlie.imported = 35
-    dean.bid = 20
-    dean.exported = 20
-    dean.imported = 20
-    erin.bid = 10
-    erin.exported = 20
-    erin.imported = 25
-
-    auctionImporters = [alice, bob, charlie, dean, erin]
-    auctionExporters = [alice, bob, charlie, dean, erin]
-    """
-
     sell_list = []
     buy_list = []
     flag = None
@@ -119,25 +98,26 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     return traders, non_traders, trading_price
 
 
-def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_platform, supplier_encrypt, supplier, period_count):
+def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_platform, supplier_encrypt, supplier,
+                  period_count):
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
             non_trader.imported = supplier_encrypt.encryptFrac(non_trader.imported)
             non_trader.realTradeAmount = non_trader.imported
-            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.imported,
-                                                        non_trader.realTradeAmount, RETAIL_PRICE, 0, True, supplier, period_count)
-            non_trader.bill += trade_cost
-            # This commented method is an alternative - it should be more efficient but makes it hard/messier to
-            # simulate it being run on the trading platform
-            # non_trader.bill = (non_trader.imported * RETAIL_PRICE) + non_trader.bill
+            # execute trade on the trading platform
+            trading_platform.execute_trade(non_trader.name, non_trader.imported,
+                                           non_trader.realTradeAmount, RETAIL_PRICE, 0, True, supplier, period_count)
+            # execute the same trade on the user's smart meter
+            non_trader.execute_trade(non_trader.imported, non_trader.realTradeAmount, RETAIL_PRICE, 0, True)
         else:
             non_trader.exported = supplier_encrypt.encryptFrac(non_trader.exported)
             non_trader.realTradeAmount = non_trader.exported
-            trade_cost = trading_platform.execute_trade(non_trader.name, non_trader.exported,
-                                                        non_trader.realTradeAmount, FEED_IN_TARIFF, 0,
-                                                        False, supplier, period_count)
-            non_trader.bill += trade_cost
+            # execute trade on the trading platform
+            trading_platform.execute_trade(non_trader.name, non_trader.exported, non_trader.realTradeAmount,
+                                           FEED_IN_TARIFF, 0, False, supplier, period_count)
+            # execute the same trade on the user's smart meter
+            non_trader.execute_trade(non_trader.exported, non_trader.realTradeAmount, FEED_IN_TARIFF, 0, False)
         non_trader.reset()
 
     # TODO: These two for blocks can probably be simplified to one
@@ -153,10 +133,11 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         # encrypt user's data before it is sent to trading platform to execute the trade
         import_trader.imported = supplier_encrypt.encryptFrac(import_trader.imported)
         import_trader.realTradeAmount = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
-        trade_cost = trading_platform.execute_trade(import_trader.name, import_trader.imported,
-                                                    import_trader.realTradeAmount, trading_price,
-                                                    tariff, True, supplier, period_count)
-        import_trader.bill += trade_cost
+        # execute trade on the trading platform
+        trading_platform.execute_trade(import_trader.name, import_trader.imported, import_trader.realTradeAmount,
+                                       trading_price, tariff, True, supplier, period_count)
+        # execute the same trade on the user's smart meter
+        import_trader.execute_trade(import_trader.imported, import_trader.realTradeAmount, trading_price, tariff, True)
         import_trader.reset()
 
     for export_trader in (traders - importers_arg):
@@ -170,10 +151,11 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         # encrypt user's data before it is sent to trading platform to execute the trade
         export_trader.exported = supplier_encrypt.encryptFrac(export_trader.exported)
         export_trader.realTradeAmount = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
-        trade_cost = trading_platform.execute_trade(export_trader.name, export_trader.exported,
-                                                    export_trader.realTradeAmount, trading_price,
-                                                    tariff, False, supplier, period_count)
-        export_trader.bill -= trade_cost
+        # execute trade on the trading platform
+        trading_platform.execute_trade(export_trader.name, export_trader.exported, export_trader.realTradeAmount,
+                                       trading_price, tariff, False, supplier, period_count)
+        # execute the same trade on the user's smart meter
+        export_trader.execute_trade(export_trader.exported, export_trader.realTradeAmount, trading_price, tariff, False)
         export_trader.reset()
 
     # TODO: This does not work :((((
@@ -182,21 +164,6 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
 
 
 def simulate(trading_periods):
-    # alice = User("Alice")
-    # bob = User("Bob")
-    # charlie = User("Charlie")
-    # dean = User("Dean")
-    # erin = User("Erin")
-    # fred = User("Fred")
-    # gary = User("Gary")
-    # harry = User("Harry")
-    # imogen = User("Imogen")
-    # john = User("John")
-    #
-    # users = {alice, bob, charlie, dean, erin, fred, gary, harry, imogen, john}
-    # importers = {alice, bob, charlie, dean, erin, fred}
-    # exporters = {gary, harry, imogen, john}
-
     supplier = Supplier()
     supplier_key = supplier.get_pub_key()
     supplier_encrypt = Pyfhel()
@@ -239,7 +206,8 @@ def simulate(trading_periods):
             else:
                 trader.realTradeAmount = max(trader.exported, trader.imported)
 
-        users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform, supplier_encrypt, supplier, currentTradingPeriod)
+        users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform, supplier_encrypt,
+                              supplier, currentTradingPeriod)
 
         # for testing only
         for current_user in users:

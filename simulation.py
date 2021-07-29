@@ -208,12 +208,13 @@ def simulate(trading_periods):
         users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform, supplier_encrypt,
                               supplier, currentTradingPeriod)
 
-        # for testing only
-        for current_user in users:
-            print(round(current_user.bill, 2))
-            print(supplier.get_user_bill_decrypted(current_user.name))
+    # for testing only
+    for current_user in users:
+        print(round(current_user.bill, 2))
+        print(supplier.get_user_bill_decrypted(current_user.name))
+        current_user.verify_send()
 
-        supplier.print_bills()
+    supplier.print_bills()
 
     return users
 

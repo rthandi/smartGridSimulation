@@ -103,21 +103,19 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
-            non_trader.imported = supplier_encrypt.encryptFrac(non_trader.imported)
-            non_trader.realTradeAmount = non_trader.imported
+            import_encrypt = supplier_encrypt.encryptFrac(non_trader.imported)
             # execute trade on the trading platform
-            trading_platform.execute_trade(non_trader.name, non_trader.imported,
-                                           non_trader.realTradeAmount, RETAIL_PRICE, 0, True, supplier, period_count)
+            trading_platform.execute_trade(non_trader.name, import_encrypt,
+                                           import_encrypt, RETAIL_PRICE, 0, True, supplier, period_count)
             # execute the same trade on the user's smart meter
-            non_trader.execute_trade(non_trader.imported, non_trader.realTradeAmount, RETAIL_PRICE, 0, True)
+            non_trader.execute_trade(non_trader.imported, non_trader.imported, RETAIL_PRICE, 0, True)
         else:
-            non_trader.exported = supplier_encrypt.encryptFrac(non_trader.exported)
-            non_trader.realTradeAmount = non_trader.exported
+            export_encrypt = supplier_encrypt.encryptFrac(non_trader.exported)
             # execute trade on the trading platform
-            trading_platform.execute_trade(non_trader.name, non_trader.exported, non_trader.realTradeAmount,
+            trading_platform.execute_trade(non_trader.name, export_encrypt, export_encrypt,
                                            FEED_IN_TARIFF, 0, False, supplier, period_count)
             # execute the same trade on the user's smart meter
-            non_trader.execute_trade(non_trader.exported, non_trader.realTradeAmount, FEED_IN_TARIFF, 0, False)
+            non_trader.execute_trade(non_trader.exported, non_trader.exported, FEED_IN_TARIFF, 0, False)
         non_trader.reset()
 
     # TODO: These two for blocks can probably be simplified to one
@@ -126,17 +124,18 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         volume_traded -= import_trader.imported
         if import_trader.imported <= import_trader.realTradeAmount:
             # they use the committed amount or more - extra purchased from retail
+            # TODO: this could be encrypted to protect privacy more - discuss if worth it
             tariff = RETAIL_PRICE
         else:
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
         # encrypt user's data before it is sent to trading platform to execute the trade
-        import_trader.imported = supplier_encrypt.encryptFrac(import_trader.imported)
-        import_trader.realTradeAmount = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
+        import_encrypt = supplier_encrypt.encryptFrac(import_trader.imported)
+        real_encrypt = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
         # execute trade on the trading platform
-        trading_platform.execute_trade(import_trader.name, import_trader.imported, import_trader.realTradeAmount,
+        trading_platform.execute_trade(import_trader.name, import_encrypt, real_encrypt,
                                        trading_price, tariff, True, supplier, period_count)
-        # execute the same trade on the user's smart meter
+        # execute the same trade on the user's smart meter - in plaintext as it won't be sent anywhere
         import_trader.execute_trade(import_trader.imported, import_trader.realTradeAmount, trading_price, tariff, True)
         import_trader.reset()
 
@@ -149,10 +148,10 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
         # encrypt user's data before it is sent to trading platform to execute the trade
-        export_trader.exported = supplier_encrypt.encryptFrac(export_trader.exported)
-        export_trader.realTradeAmount = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
+        export_encrypt = supplier_encrypt.encryptFrac(export_trader.exported)
+        real_encrypt = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
         # execute trade on the trading platform
-        trading_platform.execute_trade(export_trader.name, export_trader.exported, export_trader.realTradeAmount,
+        trading_platform.execute_trade(export_trader.name, export_encrypt, real_encrypt,
                                        trading_price, tariff, False, supplier, period_count)
         # execute the same trade on the user's smart meter
         export_trader.execute_trade(export_trader.exported, export_trader.realTradeAmount, trading_price, tariff, False)
@@ -169,13 +168,13 @@ def simulate(trading_periods):
     supplier_encrypt = Pyfhel()
     supplier_encrypt.contextGen(p=65537)
     supplier_encrypt.from_bytes_publicKey(supplier_key)
-    encrypted_zero = supplier_encrypt.encryptFrac(0)
 
     users = set()
     importers = set()
     exporters = set()
     for i in range(USER_COUNT):
-        users.add(User(str(i), encrypted_zero))
+        # needs to encrypt the 0 each time as passing it in as a variable will refer to the same one each time
+        users.add(User(supplier_key, str(i)))
 
     supplier.load_users(users)
 
@@ -211,7 +210,8 @@ def simulate(trading_periods):
 
         # for testing only
         for current_user in users:
-            print(str(current_user))
+            print(round(current_user.bill, 2))
+            print(supplier.get_user_bill_decrypted(current_user.name))
 
         supplier.print_bills()
 

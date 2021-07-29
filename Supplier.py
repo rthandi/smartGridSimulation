@@ -15,8 +15,11 @@ class Supplier:
     def get_pub_key(self):
         return self.encryption.to_bytes_publicKey()
 
-    def get_user_bill(self, user_name):
-        return round(self.encryption.decryptFrac(self.userDict[user_name]), 2)
+    def get_user_bill_decrypted(self, user_name):
+        return round(self.encryption.decryptFrac(self.userDict[user_name]['bill']), 2)
+
+    def get_user_bill_encrypted(self, user_name):
+        return self.userDict[user_name]
 
     def update_bill(self, user_name, period_bill):
         self.userDict[user_name]['bill'] += period_bill

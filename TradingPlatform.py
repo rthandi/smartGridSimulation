@@ -1,6 +1,4 @@
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
-import PlatformUser
-
 
 class TradingPlatform:
     def __init__(self, key):
@@ -14,9 +12,6 @@ class TradingPlatform:
         for user in users:
             self.user_dict[user.name] = self.encryption.encryptFrac(0)
             print("trading platform loaded: " + str(self.user_dict[user.name]))
-
-    def get_pub_key(self):
-        return self.encryption.to_bytes_publicKey()
 
     def execute_trade(self, name, committed_amount, real_amount, trading_price, tariff, imported, supplier, period_count):
         # self.encryption.from_bytes_context(user.context)

@@ -2,7 +2,7 @@ from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 
 
 class User:
-    def __init__(self, name=None, bill=0):
+    def __init__(self, key, name=None, bill=0):
         self.name = name
         self.imported = 0
         self.exported = 0
@@ -11,6 +11,7 @@ class User:
         self.bill = bill
         self.encryption = Pyfhel()
         self.encryption.contextGen(p=65537)
+        self.encryption.from_bytes_publicKey(key)
 
     def __str__(self):
         return "User: " + self.name + " bill: " + str(self.bill)
@@ -27,7 +28,7 @@ class User:
         if imported:
             period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * - tariff))
         else:
-            exported = self.encryption.negate(committed_amount)
+            exported = -committed_amount
             period_bill = (exported * trading_price - ((exported + real_amount) * tariff))
 
         self.bill += period_bill

@@ -1,10 +1,8 @@
-import struct
-
-from Crypto.Signature import pss
+from Cryptodome.Signature import pss
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
-from Crypto.Hash import SHA256
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import AES, PKCS1_OAEP
+from Cryptodome.Hash import SHA256
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Cipher import AES, PKCS1_OAEP
 
 
 class Supplier:

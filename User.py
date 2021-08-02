@@ -1,10 +1,10 @@
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 import struct
-from Crypto.PublicKey import RSA
-from Crypto.Random import get_random_bytes
-from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.Signature import pss
-from Crypto.Hash import SHA256
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Random import get_random_bytes
+from Cryptodome.Cipher import AES, PKCS1_OAEP
+from Cryptodome.Signature import pss
+from Cryptodome.Hash import SHA256
 
 
 class User:

@@ -1,14 +1,14 @@
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 import struct
-from Cryptodome.PublicKey import RSA
+from Cryptodome.PublicKey import RSA, ECC
 from Cryptodome.Random import get_random_bytes
 from Cryptodome.Cipher import AES, PKCS1_OAEP
-from Cryptodome.Signature import pss
+from Cryptodome.Signature import DSS
 from Cryptodome.Hash import SHA256
 
 
 class User:
-    def __init__(self, supplier_homo_key, supplier_rsa_key, name=None):
+    def __init__(self, supplier_homo_key, trading_platform_rsa_key, name=None):
         self.name = name
         self.imported = 0
         self.exported = 0
@@ -18,15 +18,16 @@ class User:
         self.encryption = Pyfhel()
         self.encryption.contextGen(p=65537)
         self.encryption.from_bytes_publicKey(supplier_homo_key)
-        # self.ecc_private_key = ECC.generate(curve='P-256')
-        self.rsa_private_key = RSA.generate(2048)
-        self.rsa_public_key_supplier = supplier_rsa_key
+        self.ecc_private_key = ECC.generate(curve='P-256')
+        # self.rsa_private_key = RSA.generate(2048)
+        self.rsa_public_key_trading_platform = trading_platform_rsa_key
 
     def __str__(self):
         return "User: " + self.name + " bill: " + str(self.bill)
 
     def get_public_key(self):
-        return self.rsa_private_key.publickey().exportKey()
+        print(self.ecc_private_key.public_key())
+        return self.ecc_private_key.public_key().export_key(**{"format": "DER"})
 
     def reset(self):
         self.imported = 0
@@ -47,25 +48,26 @@ class User:
 
         return period_bill
 
-    def verify_send(self, supplier):
+    def verify_send(self, trading_platform):
         # this is slightly hacky as hashing is not always a good idea for floats. This may work because it is a price
         # and therefore always rounds to 2 and the calculation is the same on both ends but there is a small chance
         # it could break (likely dependent on the inner workings of Pyfhel)
         hashed_bill = SHA256.new(struct.pack('<f', self.bill))
 
         # sign message
-        user_key = self.rsa_private_key
-        signature = pss.new(user_key).sign(hashed_bill)
+        user_key = self.ecc_private_key
+        signer = DSS.new(user_key, 'fips-186-3')
+        sig_hash = SHA256.new(hashed_bill.digest())
+        signature = signer.sign(sig_hash)
 
         # encrypt message
-        print(self.rsa_public_key_supplier)
-        supplier_key = RSA.import_key(self.rsa_public_key_supplier)
+        platform_key = RSA.import_key(self.rsa_public_key_trading_platform)
         session_key = get_random_bytes(16)
-        cipher_rsa = PKCS1_OAEP.new(supplier_key)
+        cipher_rsa = PKCS1_OAEP.new(platform_key)
         enc_session_key = cipher_rsa.encrypt(session_key)
 
         cipher_aes = AES.new(session_key, AES.MODE_EAX)
         ciphertext, tag = cipher_aes.encrypt_and_digest(hashed_bill.digest())
 
-        supplier.verify_receive(self.name, enc_session_key, cipher_aes.nonce, tag, ciphertext, signature)
+        trading_platform.verify_receive_user(self.name, enc_session_key, cipher_aes.nonce, tag, ciphertext, signature)
 

@@ -51,7 +51,7 @@ class Supplier:
 
         user_pub_key = RSA.importKey(user['pub_key'])
         verifier = pss.new(user_pub_key)
-        verifier.verify(SHA256.new(hashed_bill), signature)
+        verifier.verify(hashed_bill, signature)
 
 
 

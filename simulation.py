@@ -170,16 +170,18 @@ def simulate(trading_periods):
     supplier_encrypt.contextGen(p=65537)
     supplier_encrypt.from_bytes_publicKey(supplier_homo_key)
 
+    trading_platform = TradingPlatform(supplier_homo_key)
+    trading_platform_rsa_key = trading_platform.get_rsa_pub_key()
+
     users = set()
     importers = set()
     exporters = set()
     for i in range(USER_COUNT):
         # needs to encrypt the 0 each time as passing it in as a variable will refer to the same one each time
-        users.add(User(supplier_homo_key, supplier_rsa_key, str(i)))
+        users.add(User(supplier_homo_key, trading_platform_rsa_key, str(i)))
+        print("Added user:" + str(i))
 
     supplier.load_users(users)
-
-    trading_platform = TradingPlatform(supplier_homo_key)
     trading_platform.load_users(users)
 
     for user in users:
@@ -213,7 +215,7 @@ def simulate(trading_periods):
     for current_user in users:
         print(round(current_user.bill, 2))
         print(supplier.get_user_bill_decrypted(current_user.name))
-        current_user.verify_send(supplier)
+        current_user.verify_send(trading_platform)
 
     supplier.print_bills()
 

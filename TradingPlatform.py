@@ -38,7 +38,8 @@ class TradingPlatform:
 
         self.user_dict[name]['bill'] += period_bill
 
-        if (period_count + 1) % 24 == 0:
+        # trading period set to update bills once per month (48 * 30 due to there being a period every 30 minutes)
+        if (period_count + 1) % (48*30) == 0:
             supplier.update_bill(name, self.user_dict[name]['bill'])
             self.user_dict[name]['bill'] = self.encryption.encryptFrac(0)
 

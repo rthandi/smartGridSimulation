@@ -11,10 +11,13 @@ from Supplier import Supplier
 # constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
-TRADING_PERIODS = 24
+MONTHS = 48*30
 USER_COUNT = 20
+
+#                                                        %%% CONFIG %%%
 # false means no trading will occur
 TRADE_MODE = True
+TRADING_PERIODS = 1 * MONTHS
 
 
 def double_auction(auction_importers, auction_exporters):
@@ -58,14 +61,14 @@ def double_auction(auction_importers, auction_exporters):
             cum_sell.insert(i + 1, cum_sell[i + 1])
             sell_price_column.insert(i + 1, sell_price_column[i])
 
-        plt.plot(cum_buy, buy_price_column)
-        plt.plot(cum_sell, sell_price_column)
-
         x, y = intersect.intersection(cum_buy, buy_price_column, cum_sell, sell_price_column)
 
         try:
-            plt.plot(x[0], y[0], 'ro')
-            plt.show()
+            # uncomment to see graphs - good for debugging auction system
+            # plt.plot(cum_buy, buy_price_column)
+            # plt.plot(cum_sell, sell_price_column)
+            # plt.plot(x[0], y[0], 'ro')
+            # plt.show()
             return y[0]
         except IndexError:
             return None

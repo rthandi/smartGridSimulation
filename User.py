@@ -19,14 +19,12 @@ class User:
         self.encryption.contextGen(p=65537)
         self.encryption.from_bytes_publicKey(supplier_homo_key)
         self.ecc_private_key = ECC.generate(curve='P-256')
-        # self.rsa_private_key = RSA.generate(2048)
         self.rsa_public_key_trading_platform = trading_platform_rsa_key
 
     def __str__(self):
         return "User: " + self.name + " bill: " + str(self.bill)
 
     def get_public_key(self):
-        print(self.ecc_private_key.public_key())
         return self.ecc_private_key.public_key().export_key(**{"format": "DER"})
 
     def reset(self):
@@ -55,11 +53,12 @@ class User:
         hashed_bill = SHA256.new(struct.pack('<f', self.bill))
 
         # sign message
-        user_key = self.ecc_private_key
-        signer = DSS.new(user_key, 'fips-186-3')
+        ecc_key = self.ecc_private_key
+        signer = DSS.new(ecc_key, 'fips-186-3')
         sig_hash = SHA256.new(hashed_bill.digest())
         signature = signer.sign(sig_hash)
 
+        # TODO: maybe change this to this https://github.com/ecies/py
         # encrypt message
         platform_key = RSA.import_key(self.rsa_public_key_trading_platform)
         session_key = get_random_bytes(16)

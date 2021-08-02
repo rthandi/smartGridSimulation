@@ -17,8 +17,6 @@ USER_COUNT = 20
 TRADE_MODE = True
 
 
-# Idea: hash the encrypted stuff being sent for verification it hasn't been tampered with
-
 def double_auction(auction_importers, auction_exporters):
     sell_list = []
     buy_list = []
@@ -51,7 +49,7 @@ def double_auction(auction_importers, auction_exporters):
         buy_price_column = list(d['price'] for d in buy_list)
 
         # Not certain this is the way to do this - it creates all of the points in a stepped graph rather than
-        # a smooth one which seems to
+        # a smooth one which seems to never give the correct values
         for i in range(0, len(cum_buy) * 2 - 2, 2):
             cum_buy.insert(i + 1, cum_buy[i + 1])
             buy_price_column.insert(i + 1, buy_price_column[i])
@@ -165,13 +163,15 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
 def simulate(trading_periods):
     supplier = Supplier()
     supplier_homo_key = supplier.get_homo_pub_key()
-    supplier_rsa_key = supplier.get_rsa_pub_key()
+    supplier_ecc_key = supplier.get_ecc_public_key()
     supplier_encrypt = Pyfhel()
     supplier_encrypt.contextGen(p=65537)
     supplier_encrypt.from_bytes_publicKey(supplier_homo_key)
 
-    trading_platform = TradingPlatform(supplier_homo_key)
+    trading_platform = TradingPlatform(supplier_homo_key, supplier_ecc_key)
     trading_platform_rsa_key = trading_platform.get_rsa_pub_key()
+
+    supplier.load_trading_platform_key(trading_platform_rsa_key)
 
     users = set()
     importers = set()
@@ -211,11 +211,9 @@ def simulate(trading_periods):
         users = set_up_trades(traders, non_traders, importers, trading_price, trading_platform, supplier_encrypt,
                               supplier, currentTradingPeriod)
 
-    # for testing only
     for current_user in users:
-        print(round(current_user.bill, 2))
-        print(supplier.get_user_bill_decrypted(current_user.name))
         current_user.verify_send(trading_platform)
+        supplier.verify_send(current_user.name, trading_platform)
 
     supplier.print_bills()
 

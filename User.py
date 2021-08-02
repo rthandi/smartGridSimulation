@@ -8,16 +8,13 @@ from Cryptodome.Hash import SHA256
 
 
 class User:
-    def __init__(self, supplier_homo_key, trading_platform_rsa_key, name=None):
+    def __init__(self, trading_platform_rsa_key, name=None):
         self.name = name
         self.imported = 0
         self.exported = 0
         self.realTradeAmount = 0
         self.bid = 0
         self.bill = 0
-        self.encryption = Pyfhel()
-        self.encryption.contextGen(p=65537)
-        self.encryption.from_bytes_publicKey(supplier_homo_key)
         self.ecc_private_key = ECC.generate(curve='P-256')
         self.rsa_public_key_trading_platform = trading_platform_rsa_key
 

@@ -181,7 +181,7 @@ def simulate(trading_periods):
     exporters = set()
     for i in range(USER_COUNT):
         # needs to encrypt the 0 each time as passing it in as a variable will refer to the same one each time
-        users.add(User(supplier_homo_key, trading_platform_rsa_key, str(i)))
+        users.add(User(trading_platform_rsa_key, str(i)))
         print("Added user:" + str(i))
 
     supplier.load_users(users)

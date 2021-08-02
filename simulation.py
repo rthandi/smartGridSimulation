@@ -83,7 +83,6 @@ def auction_winners(users_arg, importers_arg, exporters_arg):
     traders = set()
     if trading_price and TRADE_MODE:
         trading_price = trading_price
-        print("Trading price for this trading period is: " + str(trading_price))
         for current_user in users_arg:
             # for each user we see if their bid is in the correct range to trade
             if (current_user in importers_arg and current_user.bid >= trading_price
@@ -122,7 +121,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
     # TODO: These two for blocks can probably be simplified to one
     volume_traded = 0
     for import_trader in (traders.intersection(importers_arg)):
-        volume_traded -= import_trader.imported
+        # volume_traded -= import_trader.imported
         if import_trader.imported <= import_trader.realTradeAmount:
             # they use the committed amount or more - extra purchased from retail
             # TODO: this could be encrypted to protect privacy more - discuss if worth it
@@ -141,7 +140,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         import_trader.reset()
 
     for export_trader in (traders - importers_arg):
-        volume_traded += export_trader.exported
+        # volume_traded += export_trader.exported
         if export_trader.exported >= export_trader.realTradeAmount:
             # they sell the committed amount or more - excess sold for FIT
             tariff = FEED_IN_TARIFF
@@ -159,7 +158,7 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         export_trader.reset()
 
     # TODO: This does not work :((((
-    print("difference between amount exported and imported (this should be 0):  " + str(volume_traded))
+    # print("difference between amount exported and imported (this should be 0):  " + str(volume_traded))
     return traders | non_traders
 
 
@@ -186,6 +185,8 @@ def simulate(trading_periods):
 
     supplier.load_users(users)
     trading_platform.load_users(users)
+
+    print("running...")
 
     for user in users:
         if random.randint(1, 2) == 1:

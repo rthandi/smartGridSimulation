@@ -164,23 +164,20 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
 
 def simulate(trading_periods):
     supplier = Supplier()
-    supplier_homo_key = supplier.get_homo_pub_key()
-    supplier_ecc_key = supplier.get_ecc_public_key()
+    supplier_homo_key = supplier.get_homo_public_key()
     supplier_encrypt = Pyfhel()
     supplier_encrypt.contextGen(p=65537)
     supplier_encrypt.from_bytes_publicKey(supplier_homo_key)
+    supplier_rsa_key = supplier.get_rsa_public_key()
 
-    trading_platform = TradingPlatform(supplier_homo_key, supplier_ecc_key)
-    trading_platform_rsa_key = trading_platform.get_rsa_pub_key()
-
-    supplier.load_trading_platform_key(trading_platform_rsa_key)
+    trading_platform = TradingPlatform(supplier_homo_key)
 
     users = set()
     importers = set()
     exporters = set()
     for i in range(USER_COUNT):
         # needs to encrypt the 0 each time as passing it in as a variable will refer to the same one each time
-        users.add(User(trading_platform_rsa_key, str(i)))
+        users.add(User(supplier_rsa_key, str(i)))
         print("Added user:" + str(i))
 
     supplier.load_users(users)
@@ -216,8 +213,8 @@ def simulate(trading_periods):
                               supplier, currentTradingPeriod)
 
     for current_user in users:
-        current_user.verify_send(trading_platform)
-        supplier.verify_send(current_user.name, trading_platform)
+        current_user.verify_send(supplier)
+        # supplier.verify_send(current_user.name, trading_platform)
 
     supplier.print_bills()
 

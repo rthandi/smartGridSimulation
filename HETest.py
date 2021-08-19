@@ -11,7 +11,7 @@ HE.keyGen()
 print(HE)
 
 integer1 = 127
-integer2 = -2
+integer2 = 2
 ctxt1 = HE.encryptInt(integer1) # Encryption makes use of the public key
 ctxt2 = HE.encryptInt(integer2) # For integers, encryptInt function is used.
 print("3. Integer Encryption")

@@ -37,6 +37,8 @@ class HEMS:
         # it could break (likely dependent on the inner workings of Pyfhel)
         hashed_bill = SHA256.new(struct.pack('<f', self.get_bill()))
 
+        print("HEMS: user " + self.name + " bill " + str(self.get_bill()))
+
         # sign message
         ecc_key = self.ecc_private_key
         signer = DSS.new(ecc_key, 'fips-186-3')

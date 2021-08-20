@@ -38,6 +38,9 @@ class Supplier:
             print("From Supplier: User: " + self.user_dict[user]['name'] + " bill: " +
                   str(round(self.encryption.decryptFrac(self.user_dict[user]['bill']), 2)))
 
+    def decrypt_val(self, arg):
+        print(str(self.encryption.decryptFrac(arg)))
+
     def verify_receive(self, user_name, enc_session_key, nonce, tag, ciphertext, signature):
         user = self.user_dict[user_name]
 
@@ -54,6 +57,7 @@ class Supplier:
         verifier.verify(sig_hash, signature)
 
         hashed_bill_supplier = SHA256.new(struct.pack('<f', self.get_user_bill_decrypted(user_name)))
+        print("user: " + user_name + " bill " + str(self.get_user_bill_decrypted(user_name)))
 
         if hashed_bill_user == hashed_bill_supplier.digest():
             print("Bills have been verified by the supplier")

@@ -3,14 +3,15 @@ from time import process_time
 
 
 class TradingPlatform:
-    def __init__(self, homo_key):
+    def __init__(self, homo_key, relin_key):
         self.encryption = Pyfhel()
-        self.encryption.from_bytes_publicKey(homo_key)
-        self.encryption.contextGen(65537)
+        self.encryption.contextGen(65537, m=8192, base=2, intDigits=64, fracDigits=32)
+        self.encryption.from_bytes_relinKey(relin_key)
+        # self.encryption.from_bytes_publicKey(homo_key)
+        self.encryption.keyGen()
         self.user_dict = {}
         self.period_counter = 0
         self.timeTally = 0
-        self.relinKeySize = 5
 
 
     def load_users(self, users):
@@ -27,34 +28,47 @@ class TradingPlatform:
         if imported:
             t1_start = process_time()
             neg_tariff = self.encryption.negate(tariff, True)
-            # hello = ((real_amount - committed_amount) * neg_tariff)
+            self.encryption.relinearize(neg_tariff)
+            hello = ((real_amount - committed_amount) * neg_tariff)
+            self.encryption.relinearize(hello)
             # supplier.decrypt_val(real_amount)
             # supplier.decrypt_val(committed_amount)
-            period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * neg_tariff))
+            period_bill = ((committed_amount * trading_price) - hello)
             t1_stop = process_time()
             self.timeTally += (t1_stop-t1_start)
         else:
             exported = self.encryption.negate(committed_amount, True)
+            self.encryption.relinearize(exported)
             # supplier.decrypt_val(committed_amount)
+            print("com")
+            supplier.decrypt_val(exported)
+            print("real")
+            supplier.decrypt_val(real_amount)
+            print("neg_tariff")
+            supplier.decrypt_val(tariff)
 
             # print("vals:")
             # supplier.decrypt_val(tariff)
             # hello = exported + real_amount
             # supplier.decrypt_val(hello)
             # print("calc:")
-            # hello = ((exported + real_amount) * tariff)
+            hello = ((exported + real_amount) * tariff)
+            self.encryption.relinearize(hello)
             # supplier.decrypt_val(hello)
             t1_start = process_time()
-            period_bill = (exported * trading_price - ((exported + real_amount) * tariff))
+            period_bill = ((exported * trading_price) - hello)
+            supplier.decrypt_val(period_bill)
             t1_stop = process_time()
             self.timeTally += (t1_stop-t1_start)
 
-        print("here")
+        print("size: " + str(period_bill.size()))
         print("bill + ")
-        supplier.decrypt_val(period_bill)
-        # self.encryption.relinKeyGen(1, self.relinKeySize)
-        # period_bill = ~ period_bill
+        self.encryption.relinearize(period_bill)
+        # supplier.decrypt_val(period_bill)
+        # supplier.decrypt_val(self.user_dict[name]['bill'])
+        # self.encryption.relinKeyGen(30, 5)
         self.user_dict[name]['bill'] += period_bill
+        # self.encryption.relinearize(self.user_dict[name]['bill'])
         print(str(supplier.encryption.noiseLevel(self.user_dict[name]['bill'])))
         supplier.decrypt_val(self.user_dict[name]['bill'])
 

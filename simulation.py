@@ -168,15 +168,20 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
 
 
 def simulate(trading_periods):
-    print("hello")
+
     supplier = Supplier()
     supplier_homo_key = supplier.get_homo_public_key()
     supplier_encrypt = Pyfhel()
-    supplier_encrypt.contextGen(p=65537)
+    supplier_encrypt.contextGen(65537, m=8192, base=2, intDigits=64, fracDigits=32)
+    print(supplier_homo_key)
     supplier_encrypt.from_bytes_publicKey(supplier_homo_key)
+    print("here")
+    supplier_encrypt.from_bytes_relinKey(supplier.get_relin_key())
     supplier_rsa_key = supplier.get_rsa_public_key()
 
-    trading_platform = TradingPlatform(supplier_homo_key)
+    trading_platform = TradingPlatform(supplier_homo_key, supplier.get_relin_key())
+
+    print("hello2")
 
     users = set()
     importers = set()
@@ -185,6 +190,8 @@ def simulate(trading_periods):
         # needs to encrypt the 0 each time as passing it in as a variable will refer to the same one each time
         users.add(User(supplier_rsa_key, str(i)))
         print("Added user:" + str(i))
+
+    print("hello3")
 
     supplier.load_users(users)
     trading_platform.load_users(users)

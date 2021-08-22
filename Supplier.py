@@ -10,8 +10,9 @@ from Cryptodome.Signature import DSS
 class Supplier:
     def __init__(self):
         self.encryption = Pyfhel()
-        self.encryption.contextGen(p=65537)
+        self.encryption.contextGen(65537, m=8192, base=2, intDigits=64, fracDigits=32)
         self.encryption.keyGen()
+        self.encryption.relinKeyGen(60, 5)
         self.user_dict = {}
         self.rsa_private_key = RSA.generate(2048)
 
@@ -20,6 +21,9 @@ class Supplier:
             self.user_dict[user.name] = {'name': user.name, 'bill': self.encryption.encryptFrac(0),
                                         'pub_key': user.get_public_key()}
             print("supplier loaded: " + str(self.user_dict[user.name]['name']))
+
+    def get_relin_key(self):
+        return self.encryption.to_bytes_relinKey()
 
     def get_homo_public_key(self):
         return self.encryption.to_bytes_publicKey()

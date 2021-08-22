@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import gmpy2
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 from phe import paillier
 import matplotlib.pyplot as plt
@@ -12,7 +13,7 @@ from Supplier import Supplier
 # constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
-MONTHS = 30
+MONTHS = 48*30
 USER_COUNT = 10
 
 #                                                        %%% CONFIG %%%

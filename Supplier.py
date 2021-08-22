@@ -1,4 +1,5 @@
 import struct
+import gmpy2
 
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 from phe import paillier
@@ -25,6 +26,9 @@ class Supplier:
 
     def get_rsa_public_key(self):
         return self.rsa_private_key.publickey().exportKey()
+
+    def decrypt_value(self, value):
+        print(self.paillier_private_key.decrypt(value))
 
     def get_user_bill_decrypted(self, user_name):
         return round(self.paillier_private_key.decrypt(self.user_dict[user_name]['bill']), 2)

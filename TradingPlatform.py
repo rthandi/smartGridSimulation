@@ -1,4 +1,5 @@
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
+import gmpy2
 from phe import paillier
 from time import process_time
 
@@ -23,14 +24,16 @@ class TradingPlatform:
         # operators and call their own methods from those in which the first argument must be a Pyfhel object
         if imported:
             period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * (tariff * -1)))
+
         else:
             exported = committed_amount * -1
-            period_bill = (exported * trading_price - ((exported + real_amount) * tariff))
+            period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * tariff))
 
         self.user_dict[name]['bill'] += period_bill
 
+
         # trading period set to update bills once per month (48 * 30 due to there being a period every 30 minutes)
-        if (period_count + 1) % (30) == 0:
+        if (period_count + 1) % (48*30) == 0:
             supplier.update_bill(name, self.user_dict[name]['bill'])
             self.user_dict[name]['bill'] = 0
 

@@ -1,6 +1,7 @@
 import struct
 
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
+from phe import paillier
 from Cryptodome.Hash import SHA256
 from Cryptodome.PublicKey import RSA, ECC
 from Cryptodome.Cipher import AES, PKCS1_OAEP
@@ -9,26 +10,24 @@ from Cryptodome.Signature import DSS
 
 class Supplier:
     def __init__(self):
-        self.encryption = Pyfhel()
-        self.encryption.contextGen(p=65537)
-        self.encryption.keyGen()
+        self.paillier_public_key, self.paillier_private_key = paillier.generate_paillier_keypair()
         self.user_dict = {}
         self.rsa_private_key = RSA.generate(2048)
 
     def load_users(self, users):
         for user in users:
-            self.user_dict[user.name] = {'name': user.name, 'bill': self.encryption.encryptFrac(0),
+            self.user_dict[user.name] = {'name': user.name, 'bill': 0,
                                         'pub_key': user.get_public_key()}
             print("supplier loaded: " + str(self.user_dict[user.name]['name']))
 
-    def get_homo_public_key(self):
-        return self.encryption.to_bytes_publicKey()
+    def get_paillier_public_key(self):
+        return self.paillier_public_key
 
     def get_rsa_public_key(self):
         return self.rsa_private_key.publickey().exportKey()
 
     def get_user_bill_decrypted(self, user_name):
-        return round(self.encryption.decryptFrac(self.user_dict[user_name]['bill']), 2)
+        return round(self.paillier_private_key.decrypt(self.user_dict[user_name]['bill']), 2)
 
     def update_bill(self, user_name, period_bill):
         self.user_dict[user_name]['bill'] += period_bill
@@ -36,7 +35,7 @@ class Supplier:
     def print_bills(self):
         for user in self.user_dict:
             print("From Supplier: User: " + self.user_dict[user]['name'] + " bill: " +
-                  str(round(self.encryption.decryptFrac(self.user_dict[user]['bill']), 2)))
+                  str(round(self.paillier_private_key.decrypt(self.user_dict[user]['bill']), 2)))
 
     def verify_receive(self, user_name, enc_session_key, nonce, tag, ciphertext, signature):
         user = self.user_dict[user_name]

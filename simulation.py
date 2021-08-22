@@ -1,6 +1,7 @@
 import random
 import numpy as np
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
+from phe import paillier
 import matplotlib.pyplot as plt
 import intersect
 
@@ -11,8 +12,8 @@ from Supplier import Supplier
 # constants
 RETAIL_PRICE = 10
 FEED_IN_TARIFF = 2
-MONTHS = 48*30
-USER_COUNT = 20
+MONTHS = 30
+USER_COUNT = 10
 
 #                                                        %%% CONFIG %%%
 # false means no trading will occur
@@ -103,14 +104,14 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
-            import_encrypt = supplier_encrypt.encryptFrac(non_trader.imported)
+            import_encrypt = supplier_encrypt.encrypt(non_trader.imported)
             # execute trade on the trading platform
             trading_platform.execute_trade(non_trader.name, import_encrypt,
                                            import_encrypt, RETAIL_PRICE, 0, True, supplier, period_count)
             # execute the same trade on the user's smart meter
             non_trader.execute_trade(non_trader.imported, non_trader.imported, RETAIL_PRICE, 0, True)
         else:
-            export_encrypt = supplier_encrypt.encryptFrac(non_trader.exported)
+            export_encrypt = supplier_encrypt.encrypt(non_trader.exported)
             # execute trade on the trading platform
             trading_platform.execute_trade(non_trader.name, export_encrypt, export_encrypt,
                                            FEED_IN_TARIFF, 0, False, supplier, period_count)
@@ -130,8 +131,8 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
         # encrypt user's data before it is sent to trading platform to execute the trade
-        import_encrypt = supplier_encrypt.encryptFrac(import_trader.imported)
-        real_encrypt = supplier_encrypt.encryptFrac(import_trader.realTradeAmount)
+        import_encrypt = supplier_encrypt.encrypt(import_trader.imported)
+        real_encrypt = supplier_encrypt.encrypt(import_trader.realTradeAmount)
         # execute trade on the trading platform
         trading_platform.execute_trade(import_trader.name, import_encrypt, real_encrypt,
                                        trading_price, tariff, True, supplier, period_count)
@@ -148,8 +149,8 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
         # encrypt user's data before it is sent to trading platform to execute the trade
-        export_encrypt = supplier_encrypt.encryptFrac(export_trader.exported)
-        real_encrypt = supplier_encrypt.encryptFrac(export_trader.realTradeAmount)
+        export_encrypt = supplier_encrypt.encrypt(export_trader.exported)
+        real_encrypt = supplier_encrypt.encrypt(export_trader.realTradeAmount)
         # execute trade on the trading platform
         trading_platform.execute_trade(export_trader.name, export_encrypt, real_encrypt,
                                        trading_price, tariff, False, supplier, period_count)
@@ -164,13 +165,13 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
 
 def simulate(trading_periods):
     supplier = Supplier()
-    supplier_homo_key = supplier.get_homo_public_key()
-    supplier_encrypt = Pyfhel()
-    supplier_encrypt.contextGen(p=65537)
-    supplier_encrypt.from_bytes_publicKey(supplier_homo_key)
+    # supplier_homo_key = supplier.get_paillier_public_key()
+    supplier_encrypt = supplier.get_paillier_public_key()
+    # supplier_encrypt.contextGen(p=65537)
+    # supplier_encrypt.from_bytes_publicKey(supplier_homo_key)
     supplier_rsa_key = supplier.get_rsa_public_key()
 
-    trading_platform = TradingPlatform(supplier_homo_key)
+    trading_platform = TradingPlatform()
 
     users = set()
     importers = set()

@@ -1,6 +1,7 @@
 from time import process_time
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 from phe import paillier
+print(paillier.__file__)
 
 encryption = Pyfhel()
 encryption.contextGen(p=65537, m=8192, base=2, intDigits=64, fracDigits = 32)

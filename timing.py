@@ -1,3 +1,4 @@
+import sys
 from time import process_time
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 from phe import paillier
@@ -9,10 +10,13 @@ encryption.relinKeyGen(bitCount=60, size=5)
 
 public_key, private_key = paillier.generate_paillier_keypair()
 
-integer1 = 2.367
-integer2 = 3.7858
+integer1 = 22
+integer2 = 22
 ctxt1 = public_key.encrypt(integer1) # Encryption makes use of the public key
 ctxt2 = public_key.encrypt(integer2) # For integers, encryptInt function is used.
+
+print(sys.getsizeof(ctxt2.ciphertext()))
+exit()
 
 committed_amount = encryption.encryptFrac(40)
 trading_price = 2.756

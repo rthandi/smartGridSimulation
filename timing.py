@@ -1,13 +1,15 @@
 from time import process_time
 from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 from phe import paillier
+from phe import encoding
+import json
 
 encryption = Pyfhel()
-encryption.contextGen(p=65537, m=8192, base=2, intDigits=64, fracDigits = 32)
+encryption.contextGen(p=65537, m=2048, base=2, intDigits=64, fracDigits = 32)
 encryption.keyGen()
 encryption.relinKeyGen(bitCount=60, size=5)
 
-public_key, private_key = paillier.generate_paillier_keypair()
+public_key, private_key = paillier.generate_paillier_keypair(n_length=2048)
 
 integer1 = 2.367
 integer2 = 3.7858
@@ -16,8 +18,11 @@ ctxt2 = public_key.encrypt(integer2) # For integers, encryptInt function is used
 
 committed_amount = encryption.encryptFrac(40)
 trading_price = 2.756
-real_amount = encryption.encryptFrac(35)
+real_amount = public_key.encrypt(35)
+print("size " + str(len(str(real_amount.ciphertext()))))
+print(str(real_amount.ciphertext()))
 tariff = encryption.encryptFrac(10)
+print(str(len(tariff.to_bytes())))
 
 # summ = ctxt1 * ctxt2
 # summ2 = summ * ctxt2

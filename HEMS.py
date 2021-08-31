@@ -6,6 +6,7 @@ from Cryptodome.Cipher import AES, PKCS1_OAEP
 from Cryptodome.Signature import DSS
 from Cryptodome.Hash import SHA256
 
+
 # Home Energy Management System
 class HEMS:
     def __init__(self, name, supplier_rsa_key):
@@ -19,7 +20,7 @@ class HEMS:
 
     def execute_trade(self, committed_amount, real_amount, trading_price, tariff, imported):
         if imported:
-            period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * - tariff))
+            period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * (tariff * -1)))
         else:
             exported = -committed_amount
             period_bill = (exported * trading_price - ((exported + real_amount) * tariff))
@@ -31,10 +32,9 @@ class HEMS:
     def get_bill(self):
         return round(self.bill, 2)
 
-    def verify_send(self, supplier):
+    def     verify_send(self, supplier):
         # this is slightly hacky as hashing is not always a good idea for floats. This may work because it is a price
-        # and therefore always rounds to 2 and the calculation is the same on both ends but there is a small chance
-        # it could break (likely dependent on the inner workings of Pyfhel)
+        # and therefore always rounds to 2 and the calculation is the same on both ends
         hashed_bill = SHA256.new(struct.pack('<f', self.get_bill()))
 
         # sign message
@@ -43,7 +43,6 @@ class HEMS:
         sig_hash = SHA256.new(hashed_bill.digest())
         signature = signer.sign(sig_hash)
 
-        # TODO: maybe change this to this https://github.com/ecies/py
         # encrypt message
         platform_key = RSA.import_key(self.rsa_public_key_supplier)
         session_key = get_random_bytes(16)

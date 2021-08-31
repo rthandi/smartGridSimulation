@@ -1,9 +1,5 @@
 import random
 import numpy as np
-import gmpy2
-from Pyfhel import Pyfhel, PyPtxt, PyCtxt
-from phe import paillier
-import matplotlib.pyplot as plt
 import intersect
 
 from TradingPlatform import TradingPlatform
@@ -105,14 +101,16 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
     for non_trader in non_traders:
         if non_trader in importers_arg:
             # user's import amount is encrypted before being sent to the trading platform for execution
-            import_encrypt = supplier_encrypt.encrypt(non_trader.imported)
+            # import_encrypt = supplier_encrypt.encrypt(non_trader.imported)
+            import_encrypt = non_trader.get_encrypted_import()
             # execute trade on the trading platform
             trading_platform.execute_trade(non_trader.name, import_encrypt,
                                            import_encrypt, RETAIL_PRICE, 0, True, supplier, period_count)
             # execute the same trade on the user's smart meter
             non_trader.execute_trade(non_trader.imported, non_trader.imported, RETAIL_PRICE, 0, True)
         else:
-            export_encrypt = supplier_encrypt.encrypt(non_trader.exported)
+            # export_encrypt = supplier_encrypt.encrypt(non_trader.exported)
+            export_encrypt = non_trader.get_encrypted_exported()
             # execute trade on the trading platform
             trading_platform.execute_trade(non_trader.name, export_encrypt, export_encrypt,
                                            FEED_IN_TARIFF, 0, False, supplier, period_count)
@@ -120,20 +118,18 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             non_trader.execute_trade(non_trader.exported, non_trader.exported, FEED_IN_TARIFF, 0, False)
         non_trader.reset()
 
-    # TODO: These two for blocks can probably be simplified to one
-    volume_traded = 0
     for import_trader in (traders.intersection(importers_arg)):
-        # volume_traded -= import_trader.imported
         if import_trader.imported <= import_trader.realTradeAmount:
             # they use the committed amount or more - extra purchased from retail
-            # TODO: this could be encrypted to protect privacy more - discuss if worth it
             tariff = RETAIL_PRICE
         else:
             # they use less than the committed amount - excess sold for FIT
             tariff = FEED_IN_TARIFF
         # encrypt user's data before it is sent to trading platform to execute the trade
-        import_encrypt = supplier_encrypt.encrypt(import_trader.imported)
-        real_encrypt = supplier_encrypt.encrypt(import_trader.realTradeAmount)
+        # import_encrypt = supplier_encrypt.encrypt(import_trader.imported)
+        import_encrypt = import_trader.get_encrypted_import()
+        # real_encrypt = supplier_encrypt.encrypt(import_trader.realTradeAmount)
+        real_encrypt = import_trader.get_encrypted_real_amount()
         # execute trade on the trading platform
         trading_platform.execute_trade(import_trader.name, import_encrypt, real_encrypt,
                                        trading_price, tariff, True, supplier, period_count)
@@ -142,7 +138,6 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         import_trader.reset()
 
     for export_trader in (traders - importers_arg):
-        # volume_traded += export_trader.exported
         if export_trader.exported >= export_trader.realTradeAmount:
             # they sell the committed amount or more - excess sold for FIT
             tariff = FEED_IN_TARIFF
@@ -150,8 +145,10 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
             # they sell less than the committed amount - buy from retail
             tariff = RETAIL_PRICE
         # encrypt user's data before it is sent to trading platform to execute the trade
-        export_encrypt = supplier_encrypt.encrypt(export_trader.exported)
-        real_encrypt = supplier_encrypt.encrypt(export_trader.realTradeAmount)
+        # export_encrypt = supplier_encrypt.encrypt(export_trader.exported)
+        export_encrypt = export_trader.get_encrypted_exported()
+        # real_encrypt = supplier_encrypt.encrypt(export_trader.realTradeAmount)
+        real_encrypt = export_trader.get_encrypted_real_amount()
         # execute trade on the trading platform
         trading_platform.execute_trade(export_trader.name, export_encrypt, real_encrypt,
                                        trading_price, tariff, False, supplier, period_count)
@@ -159,17 +156,12 @@ def set_up_trades(traders, non_traders, importers_arg, trading_price, trading_pl
         export_trader.execute_trade(export_trader.exported, export_trader.realTradeAmount, trading_price, tariff, False)
         export_trader.reset()
 
-    # TODO: This does not work :((((
-    # print("difference between amount exported and imported (this should be 0):  " + str(volume_traded))
     return traders | non_traders
 
 
 def simulate(trading_periods):
     supplier = Supplier()
-    # supplier_homo_key = supplier.get_paillier_public_key()
     supplier_encrypt = supplier.get_paillier_public_key()
-    # supplier_encrypt.contextGen(p=65537)
-    # supplier_encrypt.from_bytes_publicKey(supplier_homo_key)
     supplier_rsa_key = supplier.get_rsa_public_key()
 
     trading_platform = TradingPlatform()
@@ -179,7 +171,7 @@ def simulate(trading_periods):
     exporters = set()
     for i in range(USER_COUNT):
         # needs to encrypt the 0 each time as passing it in as a variable will refer to the same one each time
-        users.add(User(supplier_rsa_key, str(i)))
+        users.add(User(supplier_rsa_key, supplier_encrypt, str(i)))
         print("Added user:" + str(i))
 
     supplier.load_users(users)
@@ -215,10 +207,9 @@ def simulate(trading_periods):
                               supplier, currentTradingPeriod)
 
     for current_user in users:
+        print(supplier.get_user_bill_decrypted(current_user.name))
+        print(current_user.HEMS.get_bill())
         current_user.verify_send(supplier)
-        # supplier.verify_send(current_user.name, trading_platform)
-
-    supplier.print_bills()
 
     return users
 

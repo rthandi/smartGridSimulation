@@ -1,7 +1,5 @@
 import struct
-import gmpy2
 
-from Pyfhel import Pyfhel, PyPtxt, PyCtxt
 from phe import paillier
 from Cryptodome.Hash import SHA256
 from Cryptodome.PublicKey import RSA, ECC
@@ -27,19 +25,11 @@ class Supplier:
     def get_rsa_public_key(self):
         return self.rsa_private_key.publickey().exportKey()
 
-    def decrypt_value(self, value):
-        print(self.paillier_private_key.decrypt(value))
-
     def get_user_bill_decrypted(self, user_name):
         return round(self.paillier_private_key.decrypt(self.user_dict[user_name]['bill']), 2)
 
     def update_bill(self, user_name, period_bill):
         self.user_dict[user_name]['bill'] += period_bill
-
-    def print_bills(self):
-        for user in self.user_dict:
-            print("From Supplier: User: " + self.user_dict[user]['name'] + " bill: " +
-                  str(round(self.paillier_private_key.decrypt(self.user_dict[user]['bill']), 2)))
 
     def verify_receive(self, user_name, enc_session_key, nonce, tag, ciphertext, signature):
         user = self.user_dict[user_name]

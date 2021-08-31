@@ -1,9 +1,3 @@
-from Pyfhel import Pyfhel, PyPtxt, PyCtxt
-import gmpy2
-from phe import paillier
-from time import process_time
-
-
 class TradingPlatform:
     def __init__(self):
         self.user_dict = {}
@@ -20,14 +14,15 @@ class TradingPlatform:
                       period_count):
         print("trading. period count: " + str(period_count))
 
-        # bill calculations are in a very weird order so that they work for Pyfhel's methods as they take the + and *
-        # operators and call their own methods from those in which the first argument must be a Pyfhel object
+        # bill calculations are in a very weird order so that they work for HE library methods as they take the + and *
+        # operators and call their own methods from those in which the first argument must be a HE object
+        # (for Pyfhel only this may not be needed for Paillier's but worth keeping to make it easy to switch)
         if imported:
             period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * (tariff * -1)))
 
         else:
-            exported = committed_amount * -1
-            period_bill = (committed_amount * trading_price - ((real_amount - committed_amount) * tariff))
+            exported = (committed_amount * -1)
+            period_bill = (exported * trading_price - ((exported + real_amount) * tariff))
 
         self.user_dict[name]['bill'] += period_bill
 
